@@ -101,7 +101,7 @@ button{flex:1;border:0;border-radius:10px;padding:14px;font-size:15px;font-weigh
 <button type="button" class="primary" onclick="downloadPDF()">Download PDF</button>
 <button type="button" class="secondary" onclick="printPDF()">Print / Save PDF</button>
 </div>
-<div class="note">The output is a true A4 PDF. The form is rendered at high resolution for clearer printing. Only the top Mandate Form is filled; the rest of the template remains unchanged.</div>
+<div class="note">The output is an A4 PDF fitted proportionally with a print-safe margin. The form is rendered in high definition with clear, slightly larger entered text. Only the top Mandate Form is filled; the rest of the template remains unchanged.</div>
 </div>
 <div class="footer">Mandate Form Generator • Data stays in your browser.</div>
 </div>
@@ -175,7 +175,7 @@ function text(ctx,text,x,y,w,h,align="center",size=14){
  const xx=align==="center"?x+w/2:align==="right"?x+w:x;ctx.fillText(text,xx,y+h/2);ctx.textAlign="left";
 }
 function boxes(ctx,text,x,y,w,h,count,size=14){
- const s=String(text||"").slice(0,count),cw=w/count;ctx.font=size+"px Arial";ctx.fillStyle="#111";ctx.textAlign="center";ctx.textBaseline="middle";
+ const s=String(text||"").slice(0,count),cw=w/count;ctx.font="bold "+size+"px Arial";ctx.fillStyle="#111";ctx.textAlign="center";ctx.textBaseline="middle";
  for(let i=0;i<s.length;i++)ctx.fillText(s[i],x+i*cw+cw/2,y+h/2+1);ctx.textAlign="left";
 }
 function tick(ctx,cx,cy){
@@ -194,18 +194,18 @@ function renderForm(){
    ctx.scale(SCALE,SCALE);
 
    // Exact locations are based on the supplied Excel template rendered to the background image.
-   boxes(ctx,dateDigits(),991,146,228,22,8,13);
-   boxes(ctx,v("accountNumber"),650,231,569,23,20,13);
-   boxes(ctx,v("ifsc").toUpperCase(),907,261,312,22,11,13);
-   boxes(ctx,selectedDateDigits("startDate"),110,473,229,23,8,13);
-   boxes(ctx,selectedDateDigits("endDate"),110,503,229,23,8,13);
+   boxes(ctx,dateDigits(),991,146,228,22,8,16);
+   boxes(ctx,v("accountNumber"),650,231,569,23,20,16);
+   boxes(ctx,v("ifsc").toUpperCase(),907,261,312,22,11,16);
+   boxes(ctx,selectedDateDigits("startDate"),110,473,229,23,8,16);
+   boxes(ctx,selectedDateDigits("endDate"),110,503,229,23,8,16);
 
-   text(ctx,v("bankName").toUpperCase(),140,260,623,23, "center", 13);
-   text(ctx,amountWords(v("emi")),224,292,683,23,"center",13);
-   text(ctx,String(Math.round(Number(v("emi")))),935,292,284,23,"center",13);
-   text(ctx,"AGB LOAN A/C NO "+v("loanAccount").toUpperCase(),140,355,482,23,"center",12);
-   text(ctx,v("phone"),111,591,257,22,"center",13);
-   text(ctx,v("name").toUpperCase(),397,585,254,22,"center",11);
+   text(ctx,v("bankName").toUpperCase(),140,260,623,23, "center", 15);
+   text(ctx,amountWords(v("emi")),224,292,683,23,"center",15);
+   text(ctx,String(Math.round(Number(v("emi")))),935,292,284,23,"center",15);
+   text(ctx,"AGB LOAN A/C NO "+v("loanAccount").toUpperCase(),140,355,482,23,"center",14);
+   text(ctx,v("phone"),111,591,257,22,"center",15);
+   text(ctx,v("name").toUpperCase(),397,585,254,22,"center",14);
 
    ctx.restore();
    finalCanvas=canvas;
@@ -227,19 +227,22 @@ async function generate(){
 function pdfObject(){
  const {jsPDF}=window.jspdf;
  // A4 portrait: 210 x 297 mm / 595.28 x 841.89 pt.
- const pdf=new jsPDF({orientation:"portrait",unit:"pt",format:"a4",compress:true});
+ const pdf=new jsPDF({orientation:"portrait",unit:"pt",format:"a4",compress:false});
  const pageW=pdf.internal.pageSize.getWidth();
  const pageH=pdf.internal.pageSize.getHeight();
- // Small print-safe margin; page itself remains exactly A4.
- const marginLeft=12, marginRight=12, marginTop=12, marginBottom=12;
- const usableW=pageW-marginLeft-marginRight;
- const usableH=pageH-marginTop-marginBottom;
+ // Exact A4 page with a small, even print-safe margin. The HD canvas
+ // is fitted proportionally so nothing is stretched or cropped.
+ const margin=10;
+ const usableW=pageW-(margin*2);
+ const usableH=pageH-(margin*2);
  const ratio=BASE_H/BASE_W;
- let drawW=usableW, drawH=drawW*ratio;
+ let drawW=usableW;
+ let drawH=drawW*ratio;
  if(drawH>usableH){drawH=usableH;drawW=drawH/ratio;}
- const x=marginLeft;
- const y=marginTop;
- pdf.addImage(finalCanvas.toDataURL("image/png"),"PNG",x,y,drawW,drawH,undefined,"FAST");
+ const x=(pageW-drawW)/2;
+ const y=(pageH-drawH)/2;
+ // NONE keeps the PNG data from being additionally JPEG-compressed.
+ pdf.addImage(finalCanvas.toDataURL("image/png"),"PNG",x,y,drawW,drawH,undefined,"NONE");
  return pdf;
 }
 function downloadPDF(){if(!finalCanvas){show("error","Generate the form first.");return;}pdfObject().save("Filled_NACH_Mandate.pdf");}
