@@ -42,8 +42,8 @@ button{flex:1;border:0;border-radius:10px;padding:14px;font-size:15px;font-weigh
 <div class="grid">
 <div>
 <label>Date</label>
-<input id="date" class="readonly" readonly>
-<div class="hint">Automatically taken from the date of generation.</div>
+<input id="date" type="date">
+<div class="hint">Select the required date using the date picker.</div>
 </div>
 <div>
 <label>Bank A/C Number</label>
@@ -118,7 +118,6 @@ function today(){
  const d=new Date();
  return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();
 }
-document.getElementById("date").value=today();
 function v(id){return document.getElementById(id).value.trim();}
 function digits(s){return String(s||"").replace(/\D/g,"");}
 function show(type,msg){
@@ -140,7 +139,15 @@ function amountWords(n){
  if(cr)a.push(three(cr)+" CRORE");if(la)a.push(three(la)+" LAKH");if(th)a.push(three(th)+" THOUSAND");if(x)a.push(three(x));
  return a.join(" ")+" ONLY";
 }
+function dateDigits(){
+ const raw=v("date");
+ if(!raw)return "";
+ const parts=raw.split("-");
+ if(parts.length!==3)return "";
+ return parts[2]+parts[1]+parts[0];
+}
 function validate(){
+ if(!v("date"))return "Please select the Date.";
  if(!v("accountNumber"))return "Please enter Bank A/C Number.";
  if(v("accountNumber").length>20)return "Bank A/C Number cannot exceed 20 characters.";
  if(!v("bankName"))return "Please enter Bank Name.";
@@ -177,9 +184,9 @@ function renderForm(){
    ctx.drawImage(img,0,0,BASE_W,BASE_H);
 
    // Exact locations are based on the supplied Excel template rendered to the background image.
-   boxes(ctx,digits(v("date")),991,146,228,22,8,13);
+   boxes(ctx,dateDigits(),991,146,228,22,8,13);
    boxes(ctx,v("accountNumber"),650,231,569,23,20,13);
-   boxes(ctx,v("ifsc").toUpperCase(),907,261,312,22,9,13);
+   boxes(ctx,v("ifsc").toUpperCase(),907,261,312,22,11,13);
    boxes(ctx,digits(v("startDate")),110,473,229,23,8,13);
    boxes(ctx,digits(v("endDate")),110,503,229,23,8,13);
 
@@ -188,10 +195,8 @@ function renderForm(){
    text(ctx,String(Math.round(Number(v("emi")))),935,292,284,23,"center",13);
    text(ctx,"AGB LOAN A/C NO "+v("loanAccount").toUpperCase(),140,355,482,23,"center",12);
    text(ctx,v("phone"),111,591,257,22,"center",13);
-   text(ctx,v("name").toUpperCase(),397,610,254,18,"center",11);
+   text(ctx,v("name").toUpperCase(),397,585,254,22,"center",11);
 
-   // Keep the supplied CREATE action selected as shown in the Excel template.
-   tick(ctx,657,184);
 
    finalCanvas=canvas;
    document.getElementById("previewImage").src=canvas.toDataURL("image/png");
@@ -211,7 +216,7 @@ async function createFilledExcel(){
  const r=await fetch("NACH%20MANDATE.xlsx",{cache:"no-store"});
  if(!r.ok)throw new Error("NACH MANDATE.xlsx was not found. Keep it in the same folder as index.html.");
  const wb=await XlsxPopulate.fromDataAsync(await r.arrayBuffer()),sh=wb.sheet(0);
- setChars(sh,"AJ",4,"AQ",digits(v("date")));
+ setChars(sh,"AJ",4,"AQ",dateDigits());
  setChars(sh,"X",10,"AQ",v("accountNumber"));
  sh.cell("F12").value(v("bankName").toUpperCase());
  setChars(sh,"AI",12,"AQ",v("ifsc").toUpperCase());
@@ -227,13 +232,23 @@ async function createFilledExcel(){
 async function generate(){
  document.getElementById("error").style.display="none";document.getElementById("success").style.display="none";
  const e=validate();if(e){show("error",e);return;}
- document.getElementById("date").value=today();
- try{await renderForm();await createFilledExcel();show("success","Form generated successfully. Review it before printing or downloading.");window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});}
+  try{await renderForm();await createFilledExcel();show("success","Form generated successfully. Review it before printing or downloading.");window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});}
  catch(err){console.error(err);show("error",err.message||"Could not generate the form.");}
 }
 function pdfObject(){
  const {jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:"portrait",unit:"pt",format:"a4"});
- pdf.addImage(finalCanvas.toDataURL("image/png"),"PNG",0,0,pdf.internal.pageSize.getWidth(),pdf.internal.pageSize.getHeight());return pdf;
+ const pageW=pdf.internal.pageSize.getWidth();
+ const pageH=pdf.internal.pageSize.getHeight();
+ const marginLeft=18, marginRight=18, marginTop=18, marginBottom=18;
+ const usableW=pageW-marginLeft-marginRight;
+ const usableH=pageH-marginTop-marginBottom;
+ const ratio=finalCanvas.height/finalCanvas.width;
+ let drawW=usableW, drawH=drawW*ratio;
+ if(drawH>usableH){drawH=usableH;drawW=drawH/ratio;}
+ const x=marginLeft;
+ const y=marginTop;
+ pdf.addImage(finalCanvas.toDataURL("image/png"),"PNG",x,y,drawW,drawH);
+ return pdf;
 }
 function downloadPDF(){if(!finalCanvas){show("error","Generate the form first.");return;}pdfObject().save("Filled_NACH_Mandate.pdf");}
 function printPDF(){if(!finalCanvas){show("error","Generate the form first.");return;}const pdf=pdfObject();pdf.autoPrint();const u=URL.createObjectURL(pdf.output("blob"));window.open(u,"_blank");}
@@ -244,7 +259,7 @@ async function downloadExcel(){
 }
 function resetForm(){
  ["accountNumber","bankName","ifsc","emi","loanAccount","startDate","endDate","phone","name"].forEach(id=>document.getElementById(id).value="");
- document.getElementById("date").value=today();document.getElementById("preview").style.display="none";
+ document.getElementById("date").value="";document.getElementById("preview").style.display="none";
  document.getElementById("error").style.display="none";document.getElementById("success").style.display="none";
  finalCanvas=null;filledWorkbook=null;
 }
