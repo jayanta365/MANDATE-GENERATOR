@@ -221,6 +221,7 @@ function text(ctx,text,x,y,w,h,align="center",size=14,weight=700){
   ctx.textBaseline="middle";
   ctx.textAlign=align;
   const xx=align==="center"?x+w/2:align==="right"?x+w:x;
+  // Exact vertical centering: use the mathematical center of the field.
   ctx.fillText(text,xx,y+h/2);
   ctx.textAlign="left";
 }
@@ -230,7 +231,19 @@ function boxes(ctx,text,x,y,w,h,count,size=14,weight=700){
   ctx.fillStyle="#111";
   ctx.textAlign="center";
   ctx.textBaseline="middle";
-  for(let i=0;i<s.length;i++)ctx.fillText(s[i],x+i*cw+cw/2,y+h/2+1);
+  for(let i=0;i<s.length;i++)ctx.fillText(s[i],x+i*cw+cw/2,y+h/2);
+  ctx.textAlign="left";
+}
+function staticCenteredLabel(ctx,label,x,y,w,h,size=14){
+  // Cover only the inside of the existing rectangle, preserving its border.
+  ctx.fillStyle="#fff";
+  ctx.fillRect(x+2,y+2,w-4,h-4);
+  const s=fit(ctx,label,w-10,size,9,700);
+  ctx.font="700 "+s+"px Arial";
+  ctx.fillStyle="#111";
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  ctx.fillText(label,x+w/2,y+h/2);
   ctx.textAlign="left";
 }
 function renderForm(){
@@ -242,20 +255,26 @@ function renderForm(){
     img.onload=()=>{
       ctx.drawImage(img,0,0,BASE_W,BASE_H);
 
-      // IMPORTANT: these coordinates are unchanged from the previously working version.
-      // Only the font weight has been increased.
-      boxes(ctx,dateDigits(),991,146,228,22,8,13,700);
-      boxes(ctx,v("accountNumber"),650,231,569,23,20,13,700);
-      boxes(ctx,v("ifsc").toUpperCase(),907,261,312,22,11,13,700);
-      boxes(ctx,selectedDateDigits("startDate"),110,473,229,23,8,13,700);
-      boxes(ctx,selectedDateDigits("endDate"),110,503,229,23,8,13,700);
+      // IMPORTANT: field coordinates remain unchanged. Only size/weight/alignment are refined.
+      // Static labels from the Excel template are also redrawn inside their existing boxes so
+      // they are centered left/right and top/bottom without changing the box geometry.
+      staticCenteredLabel(ctx,"PUNB0RRBAGB",197,205,284,24,14);
+      staticCenteredLabel(ctx,"ASSAM GRAMIN BANK",823,205,396,24,14);
+      staticCenteredLabel(ctx,"PUNB0RRBAGB",197,1200,284,24,14);
+      staticCenteredLabel(ctx,"ASSAM GRAMIN BANK",821,1200,398,24,14);
 
-      text(ctx,v("bankName").toUpperCase(),140,260,623,23,"center",13,700);
-      text(ctx,amountWords(v("emi")),224,292,683,23,"center",13,700);
-      text(ctx,String(Math.round(Number(v("emi")))),935,292,284,23,"center",13,700);
-      text(ctx,"AGB LOAN A/C NO "+v("loanAccount").toUpperCase(),140,355,482,23,"center",12,700);
-      text(ctx,v("phone"),111,591,257,22,"center",13,700);
-      text(ctx,v("name").toUpperCase(),397,585,254,22,"center",11,700);
+      boxes(ctx,dateDigits(),991,146,228,22,8,14,700);
+      boxes(ctx,v("accountNumber"),650,231,569,23,20,14,700);
+      boxes(ctx,v("ifsc").toUpperCase(),907,261,312,22,11,14,700);
+      boxes(ctx,selectedDateDigits("startDate"),110,473,229,23,8,14,700);
+      boxes(ctx,selectedDateDigits("endDate"),110,503,229,23,8,14,700);
+
+      text(ctx,v("bankName").toUpperCase(),140,260,623,23,"center",14,700);
+      text(ctx,amountWords(v("emi")),224,292,683,23,"center",14,700);
+      text(ctx,String(Math.round(Number(v("emi")))),935,292,284,23,"center",14,700);
+      text(ctx,"AGB LOAN A/C NO "+v("loanAccount").toUpperCase(),140,355,482,23,"center",13,700);
+      text(ctx,v("phone"),111,591,257,22,"center",14,700);
+      text(ctx,v("name").toUpperCase(),397,585,254,22,"center",13,700);
 
       finalCanvas=canvas;
       const pc=document.createElement("canvas");
