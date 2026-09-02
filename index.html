@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1d4ed8">
+<title>Mandate Form Generator</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f3f6fa;color:#1f2937;font-family:Arial,Helvetica,sans-serif;padding:16px}
+.container{max-width:760px;margin:auto}
+.header{background:#1d4ed8;color:#fff;padding:22px 18px;text-align:center;border-radius:16px 16px 0 0}
+.header h1{margin:0 0 6px;font-size:24px}.header p{margin:0;font-size:13px;opacity:.92}
+.card{background:#fff;padding:20px;border-radius:0 0 16px 16px;box-shadow:0 8px 30px rgba(0,0,0,.08)}
+.title{font-size:17px;font-weight:700;padding-bottom:8px;border-bottom:1px solid #e5e7eb;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
+input{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:9px;font-size:16px;outline:none}
+input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.readonly{background:#f8fafc}.hint{font-size:11px;color:#6b7280;margin-top:4px}
+.buttons{display:flex;gap:10px;margin-top:18px}
+button{flex:1;border:0;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer}
+.primary{background:#2563eb;color:#fff}.secondary{background:#e5e7eb;color:#374151}
+.message{display:none;padding:11px;border-radius:9px;margin-bottom:15px;font-size:13px}
+.error{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+.success{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
+.preview{display:none;margin-top:24px;border-top:1px solid #e5e7eb;padding-top:18px}
+.preview img{width:100%;height:auto;display:block;border:1px solid #ddd;background:#fff}
+.note{font-size:11px;color:#6b7280;margin-top:10px;line-height:1.5}
+.footer{text-align:center;color:#9ca3af;font-size:10px;margin-top:15px}
+@media(max-width:560px){body{padding:8px}.card{padding:15px}.grid{grid-template-columns:1fr}.buttons{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header"><h1>Mandate Form Generator</h1><p>Fill the mandate form using the supplied Excel template.</p></div>
+<div class="card">
+<div id="error" class="message error"></div>
+<div id="success" class="message success"></div>
+
+<div class="title">Enter Details</div>
+<div class="grid">
+<div>
+<label>Date</label>
+<input id="date" class="readonly" readonly>
+<div class="hint">Automatically taken from the date of generation.</div>
+</div>
+<div>
+<label>Bank A/C Number</label>
+<input id="accountNumber" maxlength="20" placeholder="Enter account number">
+<div class="hint">One character will be placed in each box.</div>
+</div>
+<div>
+<label>Bank Name</label>
+<input id="bankName" maxlength="60" placeholder="Enter bank name">
+</div>
+<div>
+<label>IFSC Code</label>
+<input id="ifsc" maxlength="11" placeholder="Enter IFSC code">
+<div class="hint">Maximum 11 characters.</div>
+</div>
+<div>
+<label>EMI Amount (₹)</label>
+<input id="emi" inputmode="numeric" maxlength="13" placeholder="Example: 12300">
+</div>
+<div>
+<label>AGB Loan A/C</label>
+<input id="loanAccount" maxlength="40" placeholder="Enter AGB loan A/C">
+</div>
+<div>
+<label>EMI Start From</label>
+<input id="startDate" maxlength="10" placeholder="DD/MM/YYYY" inputmode="numeric">
+</div>
+<div>
+<label>EMI End Date</label>
+<input id="endDate" maxlength="10" placeholder="DD/MM/YYYY" inputmode="numeric">
+</div>
+<div>
+<label>Phone No.</label>
+<input id="phone" maxlength="20" inputmode="tel" placeholder="Enter phone number">
+</div>
+<div>
+<label>Name as per Bank Records</label>
+<input id="name" maxlength="40" placeholder="Enter name">
+</div>
+</div>
+
+<div class="buttons">
+<button class="primary" onclick="generate()">Generate Form</button>
+<button class="secondary" onclick="resetForm()">Reset</button>
+</div>
+
+<div id="preview" class="preview">
+<div class="title">Completed Form</div>
+<img id="previewImage" alt="Completed mandate form">
+<div class="buttons">
+<button class="primary" onclick="downloadPDF()">Download PDF</button>
+<button class="secondary" onclick="printPDF()">Print / Save PDF</button>
+</div>
+<div class="buttons">
+<button class="secondary" onclick="downloadExcel()">Download Filled Excel</button>
+</div>
+<div class="note">
+The PDF is generated from a high-resolution rendering of the supplied Excel template. Only the top Mandate Form is filled. The instructions and sample section remain unchanged.
+</div>
+</div>
+<div class="footer">Mandate Form Generator • Data stays in your browser.</div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx-populate@1.21.0/browser/xlsx-populate.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+const BASE_W=1404, BASE_H=1985;
+let finalCanvas=null, filledWorkbook=null;
+
+function today(){
+ const d=new Date();
+ return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();
+}
+document.getElementById("date").value=today();
+function v(id){return document.getElementById(id).value.trim();}
+function digits(s){return String(s||"").replace(/\D/g,"");}
+function show(type,msg){
+ const e=document.getElementById("error"),s=document.getElementById("success");
+ e.style.display=type==="error"?"block":"none";s.style.display=type==="success"?"block":"none";
+ (type==="error"?e:s).textContent=msg;
+}
+function amountWords(n){
+ n=Math.round(Number(n)); if(!Number.isFinite(n)||n<0)return "";
+ if(n===0)return "ZERO ONLY";
+ const o=["","ONE","TWO","THREE","FOUR","FIVE","SIX","SEVEN","EIGHT","NINE","TEN","ELEVEN","TWELVE","THIRTEEN","FOURTEEN","FIFTEEN","SIXTEEN","SEVENTEEN","EIGHTEEN","NINETEEN"];
+ const t=["","","TWENTY","THIRTY","FORTY","FIFTY","SIXTY","SEVENTY","EIGHTY","NINETY"];
+ function two(x){return x<20?o[x]:t[Math.floor(x/10)]+(x%10?" "+o[x%10]:"");}
+ function three(x){return x<100?two(x):o[Math.floor(x/100)]+" HUNDRED"+(x%100?" "+two(x%100):"");}
+ const a=[];let x=n;
+ const cr=Math.floor(x/10000000);x%=10000000;
+ const la=Math.floor(x/100000);x%=100000;
+ const th=Math.floor(x/1000);x%=1000;
+ if(cr)a.push(three(cr)+" CRORE");if(la)a.push(three(la)+" LAKH");if(th)a.push(three(th)+" THOUSAND");if(x)a.push(three(x));
+ return a.join(" ")+" ONLY";
+}
+function validate(){
+ if(!v("accountNumber"))return "Please enter Bank A/C Number.";
+ if(v("accountNumber").length>20)return "Bank A/C Number cannot exceed 20 characters.";
+ if(!v("bankName"))return "Please enter Bank Name.";
+ if(!v("ifsc"))return "Please enter IFSC Code.";
+ if(v("ifsc").length>11)return "IFSC Code cannot exceed 11 characters.";
+ if(!/^\d+(\.\d{1,2})?$/.test(v("emi"))||Number(v("emi"))<=0)return "Please enter a valid EMI amount.";
+ if(!v("loanAccount"))return "Please enter AGB Loan A/C.";
+ if(!/^\d{2}\/\d{2}\/\d{4}$/.test(v("startDate")))return "EMI Start From must be DD/MM/YYYY.";
+ if(!/^\d{2}\/\d{2}\/\d{4}$/.test(v("endDate")))return "EMI End Date must be DD/MM/YYYY.";
+ if(!v("phone"))return "Please enter Phone No.";
+ if(!v("name"))return "Please enter Name as per Bank Records.";
+ if(v("name").length>40)return "Name cannot exceed 40 characters.";
+ return "";
+}
+function fit(ctx,text,max,start=14,min=6){
+ let s=start;while(s>min){ctx.font=s+"px Arial";if(ctx.measureText(text).width<=max)return s;s-=.5}return min;
+}
+function text(ctx,text,x,y,w,h,align="center",size=14){
+ if(!text)return;let s=fit(ctx,text,w-8,size,6);ctx.font=s+"px Arial";ctx.fillStyle="#111";ctx.textBaseline="middle";ctx.textAlign=align;
+ const xx=align==="center"?x+w/2:align==="right"?x+w:x;ctx.fillText(text,xx,y+h/2);ctx.textAlign="left";
+}
+function boxes(ctx,text,x,y,w,h,count,size=14){
+ const s=String(text||"").slice(0,count),cw=w/count;ctx.font=size+"px Arial";ctx.fillStyle="#111";ctx.textAlign="center";ctx.textBaseline="middle";
+ for(let i=0;i<s.length;i++)ctx.fillText(s[i],x+i*cw+cw/2,y+h/2+1);ctx.textAlign="left";
+}
+function tick(ctx,cx,cy){
+ ctx.strokeStyle="#111";ctx.lineWidth=1.8;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(cx-7,cy);ctx.lineTo(cx-2,cy+5);ctx.lineTo(cx+9,cy-7);ctx.stroke();
+}
+function renderForm(){
+ return new Promise((resolve,reject)=>{
+  const canvas=document.createElement("canvas");canvas.width=BASE_W;canvas.height=BASE_H;
+  const ctx=canvas.getContext("2d");const img=new Image();
+  img.onload=()=>{
+   ctx.drawImage(img,0,0,BASE_W,BASE_H);
+
+   // Exact locations are based on the supplied Excel template rendered to the background image.
+   boxes(ctx,digits(v("date")),991,146,228,22,8,13);
+   boxes(ctx,v("accountNumber"),650,231,569,23,20,13);
+   boxes(ctx,v("ifsc").toUpperCase(),907,261,312,22,9,13);
+   boxes(ctx,digits(v("startDate")),110,473,229,23,8,13);
+   boxes(ctx,digits(v("endDate")),110,503,229,23,8,13);
+
+   text(ctx,v("bankName").toUpperCase(),140,260,623,23, "center", 13);
+   text(ctx,amountWords(v("emi")),224,292,683,23,"center",13);
+   text(ctx,String(Math.round(Number(v("emi")))),935,292,284,23,"center",13);
+   text(ctx,"AGB LOAN A/C NO "+v("loanAccount").toUpperCase(),140,355,482,23,"center",12);
+   text(ctx,v("phone"),111,591,257,22,"center",13);
+   text(ctx,v("name").toUpperCase(),397,610,254,18,"center",11);
+
+   // Keep the supplied CREATE action selected as shown in the Excel template.
+   tick(ctx,657,184);
+
+   finalCanvas=canvas;
+   document.getElementById("previewImage").src=canvas.toDataURL("image/png");
+   document.getElementById("preview").style.display="block";
+   resolve();
+  };
+  img.onerror=()=>reject(new Error("Template image could not be loaded."));
+  img.src="template.png";
+ });
+}
+function colNum(s){let n=0;for(const c of s)n=n*26+c.charCodeAt(0)-64;return n;}
+function setChars(sheet,startCol,row,endCol,text){
+ const a=colNum(startCol),b=colNum(endCol),s=String(text||"").slice(0,b-a+1);
+ for(let c=a;c<=b;c++)sheet.cell(row,c).value(s[c-a]||"");
+}
+async function createFilledExcel(){
+ const r=await fetch("NACH%20MANDATE.xlsx",{cache:"no-store"});
+ if(!r.ok)throw new Error("NACH MANDATE.xlsx was not found. Keep it in the same folder as index.html.");
+ const wb=await XlsxPopulate.fromDataAsync(await r.arrayBuffer()),sh=wb.sheet(0);
+ setChars(sh,"AJ",4,"AQ",digits(v("date")));
+ setChars(sh,"X",10,"AQ",v("accountNumber"));
+ sh.cell("F12").value(v("bankName").toUpperCase());
+ setChars(sh,"AI",12,"AQ",v("ifsc").toUpperCase());
+ sh.cell("I14").value(amountWords(v("emi")));
+ sh.cell("AI14").value(String(Math.round(Number(v("emi")))));
+ sh.cell("F18").value("AGB LOAN A/C NO "+v("loanAccount").toUpperCase());
+ setChars(sh,"E",24,"L",digits(v("startDate")));
+ setChars(sh,"E",26,"L",digits(v("endDate")));
+ sh.cell("E30").value(v("phone"));
+ sh.cell("O31").value(v("name").toUpperCase());
+ filledWorkbook=wb;
+}
+async function generate(){
+ document.getElementById("error").style.display="none";document.getElementById("success").style.display="none";
+ const e=validate();if(e){show("error",e);return;}
+ document.getElementById("date").value=today();
+ try{await renderForm();await createFilledExcel();show("success","Form generated successfully. Review it before printing or downloading.");window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});}
+ catch(err){console.error(err);show("error",err.message||"Could not generate the form.");}
+}
+function pdfObject(){
+ const {jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:"portrait",unit:"pt",format:"a4"});
+ pdf.addImage(finalCanvas.toDataURL("image/png"),"PNG",0,0,pdf.internal.pageSize.getWidth(),pdf.internal.pageSize.getHeight());return pdf;
+}
+function downloadPDF(){if(!finalCanvas){show("error","Generate the form first.");return;}pdfObject().save("Filled_NACH_Mandate.pdf");}
+function printPDF(){if(!finalCanvas){show("error","Generate the form first.");return;}const pdf=pdfObject();pdf.autoPrint();const u=URL.createObjectURL(pdf.output("blob"));window.open(u,"_blank");}
+async function downloadExcel(){
+ if(!filledWorkbook){show("error","Generate the form first.");return;}
+ const blob=await filledWorkbook.outputAsync({type:"blob"}),u=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=u;a.download="Filled_NACH_Mandate.xlsx";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);
+}
+function resetForm(){
+ ["accountNumber","bankName","ifsc","emi","loanAccount","startDate","endDate","phone","name"].forEach(id=>document.getElementById(id).value="");
+ document.getElementById("date").value=today();document.getElementById("preview").style.display="none";
+ document.getElementById("error").style.display="none";document.getElementById("success").style.display="none";
+ finalCanvas=null;filledWorkbook=null;
+}
+</script>
+</body>
+</html>
