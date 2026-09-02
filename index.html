@@ -34,22 +34,42 @@ function drawBold(ctx,text,x,y,w,h,start=31){if(!text)return;const size=fitFont(
 function clearField(ctx,x,y,w,h){ctx.save();ctx.fillStyle='#fff';ctx.fillRect(x+2,y+2,w-4,h-4);ctx.restore();}
 function drawBoxes(ctx,text,x,y,w,h,count,start=30){const s=String(text||'').slice(0,count),cw=w/count;ctx.font='900 '+start+'px Arial,Helvetica,sans-serif';ctx.fillStyle='#111';ctx.textAlign='center';ctx.textBaseline='middle';for(let i=0;i<s.length;i++)ctx.fillText(s[i],x+i*cw+cw/2,y+h/2+1);ctx.textAlign='left';}
 function renderForm(){return new Promise((resolve,reject)=>{const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;const ctx=canvas.getContext('2d',{alpha:false});const img=new Image();img.onload=()=>{ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(img,0,0,W,H);
-// Coordinates are mapped from the original Excel template rendered at 150 dpi, then cropped and centered on A4 with a narrow white border.
-// Fixed original template text remains untouched; only user fields are overlaid.
-drawBoxes(ctx,dateDigits('date'),1968,379,434,45,8,29);
-drawBoxes(ctx,v('accountNumber'),1323,541,1079,45,20,29);
-clearField(ctx,464,485,541,45);drawBold(ctx,'PUNB0RRBAGB',464,485,541,45,29);
-clearField(ctx,1644,485,758,45);drawBold(ctx,'ASSAM GRAMIN BANK',1644,485,758,45,29);
-// Variable bank name: the 'with bank' field remains editable and is filled from the user's input.
-clearField(ctx,411,541,594,45);drawBold(ctx,v('bankName').toUpperCase(),411,541,594,45,29);
-drawBoxes(ctx,v('ifsc').toUpperCase(),1809,541,593,45,11,29);
-drawBold(ctx,amountWords(v('emi')),514,600,1298,41,31);
-drawBold(ctx,String(Math.round(Number(v('emi')))),1863,600,539,41,31);
-drawBold(ctx,'AGB LOAN A/C NO '+v('loanAccount').toUpperCase(),354,655,919,41,28);
-drawBoxes(ctx,dateDigits('startDate'),301,999,435,41,8,29);
-drawBoxes(ctx,dateDigits('endDate'),301,1057,435,41,8,29);
-drawBold(ctx,v('phone'),303,1221,486,41,29);
-drawBold(ctx,v('name').toUpperCase(),842,1221,481,41,31);
+// Coordinates are mapped directly from the supplied Excel template rendered to the 2480x3508 A4 canvas.
+// Only the blank top mandate form is filled; the instruction and sample sections remain unchanged.
+
+// Fixed fields from the original sample format.
+clearField(ctx,465,485,539,43);drawBold(ctx,'PUNB0RRBAGB',465,485,539,43,29);
+clearField(ctx,1644,487,758,42);drawBold(ctx,'ASSAM GRAMIN BANK',1644,487,758,42,29);
+
+// Date: DDMMYYYY in the 8 date boxes.
+drawBoxes(ctx,dateDigits('date'),1968,381,433,39,8,29);
+
+// Bank account number: exact Bank a/c number field.
+drawBoxes(ctx,v('accountNumber'),1323,541,1078,43,20,29);
+
+// Customer's bank name: exact "with bank" field.
+clearField(ctx,411,583,593,42);drawBold(ctx,v('bankName').toUpperCase(),411,583,593,42,29);
+
+// Customer bank IFSC/MICR: exact IFSC/MICR field.
+drawBoxes(ctx,v('ifsc').toUpperCase(),1441,583,960,42,11,29);
+
+// Amount in words and amount in figures.
+drawBold(ctx,amountWords(v('emi')),356,599,1185,42,31);
+drawBold(ctx,String(Math.round(Number(v('emi')))),1809,600,592,42,31);
+
+// Reference 1 with the required prefix.
+drawBold(ctx,'AGB LOAN A/C NO '+v('loanAccount').toUpperCase(),356,776,916,42,28);
+
+// Validity dates: From / To.
+drawBoxes(ctx,dateDigits('startDate'),303,999,433,42,8,29);
+drawBoxes(ctx,dateDigits('endDate'),303,1057,433,42,8,29);
+
+// Phone and first customer's name.
+drawBold(ctx,v('phone'),303,1221,486,42,29);
+drawBold(ctx,v('name').toUpperCase(),842,1221,481,42,31);
+
+// CREATE/MODIFY/CANCEL circular marks are part of the Excel-derived template image.
+
 finalCanvas=canvas;$('previewImage').src=canvas.toDataURL('image/png');$('preview').style.display='block';resolve();};img.onerror=()=>reject(new Error('Template image could not be loaded.'));img.src='template-a4-300dpi.png';});}
 async function generate(){show('','');const err=validate();if(err){show('error',err);return;}try{await renderForm();show('success','Form generated successfully. Review it before downloading.');window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});}catch(e){show('error',e.message||'Could not generate the form.');}}
 function makePDF(){if(!finalCanvas){show('error','Generate the form first.');return null;}const {jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4',compress:false});const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight();pdf.addImage(finalCanvas.toDataURL('image/png'),'PNG',0,0,pw,ph,undefined,'NONE');return pdf;}
