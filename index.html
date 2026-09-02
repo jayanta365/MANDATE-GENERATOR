@@ -29,6 +29,8 @@ button{flex:1;border:0;border-radius:10px;padding:14px;font-size:15px;font-weigh
 .note{font-size:11px;color:#6b7280;margin-top:10px;line-height:1.5}
 .footer{text-align:center;color:#9ca3af;font-size:10px;margin-top:15px}
 @media(max-width:560px){body{padding:8px}.card{padding:15px}.grid{grid-template-columns:1fr}.buttons{flex-direction:column}}
+
+@media print{body{background:#fff;padding:0}.container{max-width:none}.header,.card>.title,.card>form,.buttons,.message,.footer,.note{display:none!important}.preview{display:block!important;border:0;margin:0;padding:0}.preview img{border:0;width:210mm;max-width:210mm;height:297mm;object-fit:contain;object-position:top left}}
 </style>
 </head>
 <body>
@@ -88,33 +90,27 @@ button{flex:1;border:0;border-radius:10px;padding:14px;font-size:15px;font-weigh
 </div>
 
 <div class="buttons">
-<button class="primary" onclick="generate()">Generate Form</button>
-<button class="secondary" onclick="resetForm()">Reset</button>
+<button type="button" class="primary" onclick="generate()">Generate Form</button>
+<button type="button" class="secondary" onclick="resetForm()">Reset</button>
 </div>
 
 <div id="preview" class="preview">
 <div class="title">Completed Form</div>
 <img id="previewImage" alt="Completed mandate form">
 <div class="buttons">
-<button class="primary" onclick="downloadPDF()">Download PDF</button>
-<button class="secondary" onclick="printPDF()">Print / Save PDF</button>
+<button type="button" class="primary" onclick="downloadPDF()">Download PDF</button>
+<button type="button" class="secondary" onclick="printPDF()">Print / Save PDF</button>
 </div>
-<div class="buttons">
-<button class="secondary" onclick="downloadExcel()">Download Filled Excel</button>
+<div class="note">The output is a true A4 PDF. The form is rendered at high resolution for clearer printing. Only the top Mandate Form is filled; the rest of the template remains unchanged.</div>
 </div>
-<div class="note">
-The PDF is generated from a high-resolution rendering of the supplied Excel template. Only the top Mandate Form is filled. The instructions and sample section remain unchanged.
-</div>
-</div>
-<div class="footer">Mandate Form Generator by Jayanta Boruah• Data stays in your browser.</div>
+<div class="footer">Mandate Form Generator • Data stays in your browser.</div>
 </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx-populate@1.21.0/browser/xlsx-populate.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-const BASE_W=1404, BASE_H=1985;
-let finalCanvas=null, filledWorkbook=null;
+const BASE_W=2480, BASE_H=3508, SCALE=2480/1404;
+let finalCanvas=null;
 
 function today(){
  const d=new Date();
@@ -188,9 +184,14 @@ function tick(ctx,cx,cy){
 function renderForm(){
  return new Promise((resolve,reject)=>{
   const canvas=document.createElement("canvas");canvas.width=BASE_W;canvas.height=BASE_H;
-  const ctx=canvas.getContext("2d");const img=new Image();
+  const ctx=canvas.getContext("2d", {alpha:false});
+  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingQuality="high";
+  const img=new Image();
   img.onload=()=>{
    ctx.drawImage(img,0,0,BASE_W,BASE_H);
+   ctx.save();
+   ctx.scale(SCALE,SCALE);
 
    // Exact locations are based on the supplied Excel template rendered to the background image.
    boxes(ctx,dateDigits(),991,146,228,22,8,13);
@@ -206,72 +207,48 @@ function renderForm(){
    text(ctx,v("phone"),111,591,257,22,"center",13);
    text(ctx,v("name").toUpperCase(),397,585,254,22,"center",11);
 
-
+   ctx.restore();
    finalCanvas=canvas;
    document.getElementById("previewImage").src=canvas.toDataURL("image/png");
    document.getElementById("preview").style.display="block";
    resolve();
   };
   img.onerror=()=>reject(new Error("Template image could not be loaded."));
-  img.src="template.png";
+  img.src="template-hd.png";
  });
-}
-function colNum(s){let n=0;for(const c of s)n=n*26+c.charCodeAt(0)-64;return n;}
-function setChars(sheet,startCol,row,endCol,text){
- const a=colNum(startCol),b=colNum(endCol),s=String(text||"").slice(0,b-a+1);
- for(let c=a;c<=b;c++)sheet.cell(row,c).value(s[c-a]||"");
-}
-async function createFilledExcel(){
- const r=await fetch("NACH%20MANDATE.xlsx",{cache:"no-store"});
- if(!r.ok)throw new Error("NACH MANDATE.xlsx was not found. Keep it in the same folder as index.html.");
- const wb=await XlsxPopulate.fromDataAsync(await r.arrayBuffer()),sh=wb.sheet(0);
- setChars(sh,"AJ",4,"AQ",dateDigits());
- setChars(sh,"X",10,"AQ",v("accountNumber"));
- sh.cell("F12").value(v("bankName").toUpperCase());
- setChars(sh,"AI",12,"AQ",v("ifsc").toUpperCase());
- sh.cell("I14").value(amountWords(v("emi")));
- sh.cell("AI14").value(String(Math.round(Number(v("emi")))));
- sh.cell("F18").value("AGB LOAN A/C NO "+v("loanAccount").toUpperCase());
- setChars(sh,"E",24,"L",selectedDateDigits("startDate"));
- setChars(sh,"E",26,"L",selectedDateDigits("endDate"));
- sh.cell("E30").value(v("phone"));
- sh.cell("O31").value(v("name").toUpperCase());
- filledWorkbook=wb;
 }
 async function generate(){
  document.getElementById("error").style.display="none";document.getElementById("success").style.display="none";
  const e=validate();if(e){show("error",e);return;}
  if(v("endDate") < v("startDate")){show("error","EMI End Date cannot be earlier than EMI Start From date.");return;}
-  try{await renderForm();await createFilledExcel();show("success","Form generated successfully. Review it before printing or downloading.");window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});}
+  try{await renderForm();show("success","Form generated successfully. Review it before printing or downloading.");window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});}
  catch(err){console.error(err);show("error",err.message||"Could not generate the form.");}
 }
 function pdfObject(){
- const {jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:"portrait",unit:"pt",format:"a4"});
+ const {jsPDF}=window.jspdf;
+ // A4 portrait: 210 x 297 mm / 595.28 x 841.89 pt.
+ const pdf=new jsPDF({orientation:"portrait",unit:"pt",format:"a4",compress:true});
  const pageW=pdf.internal.pageSize.getWidth();
  const pageH=pdf.internal.pageSize.getHeight();
- const marginLeft=18, marginRight=18, marginTop=18, marginBottom=18;
+ // Small print-safe margin; page itself remains exactly A4.
+ const marginLeft=12, marginRight=12, marginTop=12, marginBottom=12;
  const usableW=pageW-marginLeft-marginRight;
  const usableH=pageH-marginTop-marginBottom;
- const ratio=finalCanvas.height/finalCanvas.width;
+ const ratio=BASE_H/BASE_W;
  let drawW=usableW, drawH=drawW*ratio;
  if(drawH>usableH){drawH=usableH;drawW=drawH/ratio;}
  const x=marginLeft;
  const y=marginTop;
- pdf.addImage(finalCanvas.toDataURL("image/png"),"PNG",x,y,drawW,drawH);
+ pdf.addImage(finalCanvas.toDataURL("image/png"),"PNG",x,y,drawW,drawH,undefined,"FAST");
  return pdf;
 }
 function downloadPDF(){if(!finalCanvas){show("error","Generate the form first.");return;}pdfObject().save("Filled_NACH_Mandate.pdf");}
 function printPDF(){if(!finalCanvas){show("error","Generate the form first.");return;}const pdf=pdfObject();pdf.autoPrint();const u=URL.createObjectURL(pdf.output("blob"));window.open(u,"_blank");}
-async function downloadExcel(){
- if(!filledWorkbook){show("error","Generate the form first.");return;}
- const blob=await filledWorkbook.outputAsync({type:"blob"}),u=URL.createObjectURL(blob),a=document.createElement("a");
- a.href=u;a.download="Filled_NACH_Mandate.xlsx";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);
-}
 function resetForm(){
  ["accountNumber","bankName","ifsc","emi","loanAccount","startDate","endDate","phone","name"].forEach(id=>document.getElementById(id).value="");
  document.getElementById("date").value="";document.getElementById("preview").style.display="none";
  document.getElementById("error").style.display="none";document.getElementById("success").style.display="none";
- finalCanvas=null;filledWorkbook=null;
+ finalCanvas=null;
 }
 </script>
 </body>
