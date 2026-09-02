@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#1d4ed8">
-<title>Mandate Form Generator</title>
+<title>NACH Mandate Form Generator</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#f3f6fa;color:#1f2937;font-family:Arial,Helvetica,sans-serif;padding:16px}
@@ -17,7 +17,7 @@ body{margin:0;background:#f3f6fa;color:#1f2937;font-family:Arial,Helvetica,sans-
 label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
 input{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:9px;font-size:16px;outline:none}
 input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
-.readonly{background:#f8fafc}.hint{font-size:11px;color:#6b7280;margin-top:4px}
+.hint{font-size:11px;color:#6b7280;margin-top:4px}
 .buttons{display:flex;gap:10px;margin-top:18px}
 button{flex:1;border:0;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer}
 .primary{background:#2563eb;color:#fff}.secondary{background:#e5e7eb;color:#374151}
@@ -25,32 +25,33 @@ button{flex:1;border:0;border-radius:10px;padding:14px;font-size:15px;font-weigh
 .error{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
 .success{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
 .preview{display:none;margin-top:24px;border-top:1px solid #e5e7eb;padding-top:18px}
-.preview img{width:calc(100% - 20px);height:auto;display:block;margin:0 auto;border:1px solid #ddd;background:#fff}
+.preview img{width:100%;height:auto;display:block;margin:0 auto;border:1px solid #ddd;background:#fff}
 .note{font-size:11px;color:#6b7280;margin-top:10px;line-height:1.5}
 .footer{text-align:center;color:#9ca3af;font-size:10px;margin-top:15px}
 @media(max-width:560px){body{padding:8px}.card{padding:15px}.grid{grid-template-columns:1fr}.buttons{flex-direction:column}}
-
-@media print{body{background:#fff;padding:0}.container{max-width:none}.header,.card>.title,.card>form,.buttons,.message,.footer,.note{display:none!important}.preview{display:block!important;border:0;margin:0;padding:0}.preview img{border:0;width:200mm;max-width:200mm;height:auto;margin:0 auto;object-fit:contain;object-position:top center}}
 </style>
 </head>
 <body>
 <div class="container">
-<div class="header"><h1>Mandate Form Generator</h1><p>Fill the mandate form using the supplied Excel template.</p></div>
+<div class="header">
+<h1>NACH Mandate Form Generator</h1>
+<p>Fill the form and download an A4 PDF.</p>
+</div>
 <div class="card">
 <div id="error" class="message error"></div>
 <div id="success" class="message success"></div>
-
 <div class="title">Enter Details</div>
+
 <div class="grid">
 <div>
 <label>Date</label>
 <input id="date" type="date">
-<div class="hint">Select the required date using the date picker.</div>
+<div class="hint">Select the required date.</div>
 </div>
 <div>
 <label>Bank A/C Number</label>
 <input id="accountNumber" maxlength="20" placeholder="Enter account number">
-<div class="hint">One character will be placed in each box.</div>
+<div class="hint">One character is placed in each box.</div>
 </div>
 <div>
 <label>Bank Name</label>
@@ -72,12 +73,10 @@ button{flex:1;border:0;border-radius:10px;padding:14px;font-size:15px;font-weigh
 <div>
 <label>EMI Start From</label>
 <input id="startDate" type="date">
-<div class="hint">Select EMI start date using the date picker.</div>
 </div>
 <div>
 <label>EMI End Date</label>
 <input id="endDate" type="date">
-<div class="hint">Select EMI end date using the date picker.</div>
 </div>
 <div>
 <label>Phone No.</label>
@@ -96,35 +95,34 @@ button{flex:1;border:0;border-radius:10px;padding:14px;font-size:15px;font-weigh
 
 <div id="preview" class="preview">
 <div class="title">Completed Form</div>
-<img id="previewImage" alt="Completed mandate form">
+<img id="previewImage" alt="Completed NACH mandate form">
 <div class="buttons">
 <button type="button" class="primary" onclick="downloadPDF()">Download PDF</button>
 <button type="button" class="secondary" onclick="printPDF()">Print / Save PDF</button>
 </div>
-<div class="note">The output is an exact A4 PDF with a centered 5 mm side margin. All filled-data text is rendered in a heavier bold font for clearer printing. Only the top Mandate Form is filled; the rest of the template remains unchanged.</div>
+<div class="note">
+The PDF is generated as exact A4 portrait size using the supplied Excel template. The template has a narrow built-in margin and is centred on the page. The top Mandate Form is filled; the instructions and sample form remain unchanged. Filled information is rendered in bold for clearer printing.
 </div>
-<div class="footer">Mandate Form Generator • Data stays in your browser.</div>
+</div>
+<div class="footer">NACH Mandate Form Generator • Data is processed in your browser.</div>
 </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-const BASE_W=2480, BASE_H=3508, SCALE=2480/1404;
+const W=2480,H=3508;
 let finalCanvas=null;
 
-function today(){
- const d=new Date();
- return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();
-}
 function v(id){return document.getElementById(id).value.trim();}
-function digits(s){return String(s||"").replace(/\D/g,"");}
 function show(type,msg){
  const e=document.getElementById("error"),s=document.getElementById("success");
- e.style.display=type==="error"?"block":"none";s.style.display=type==="success"?"block":"none";
+ e.style.display=type==="error"?"block":"none";
+ s.style.display=type==="success"?"block":"none";
  (type==="error"?e:s).textContent=msg;
 }
 function amountWords(n){
- n=Math.round(Number(n)); if(!Number.isFinite(n)||n<0)return "";
+ n=Math.round(Number(n));
+ if(!Number.isFinite(n)||n<0)return "";
  if(n===0)return "ZERO ONLY";
  const o=["","ONE","TWO","THREE","FOUR","FIVE","SIX","SEVEN","EIGHT","NINE","TEN","ELEVEN","TWELVE","THIRTEEN","FOURTEEN","FIFTEEN","SIXTEEN","SEVENTEEN","EIGHTEEN","NINETEEN"];
  const t=["","","TWENTY","THIRTY","FORTY","FIFTY","SIXTY","SEVENTY","EIGHTY","NINETY"];
@@ -134,22 +132,15 @@ function amountWords(n){
  const cr=Math.floor(x/10000000);x%=10000000;
  const la=Math.floor(x/100000);x%=100000;
  const th=Math.floor(x/1000);x%=1000;
- if(cr)a.push(three(cr)+" CRORE");if(la)a.push(three(la)+" LAKH");if(th)a.push(three(th)+" THOUSAND");if(x)a.push(three(x));
+ if(cr)a.push(three(cr)+" CRORE");
+ if(la)a.push(three(la)+" LAKH");
+ if(th)a.push(three(th)+" THOUSAND");
+ if(x)a.push(three(x));
  return a.join(" ")+" ONLY";
 }
-function dateDigits(){
- const raw=v("date");
- if(!raw)return "";
- const parts=raw.split("-");
- if(parts.length!==3)return "";
- return parts[2]+parts[1]+parts[0];
-}
-function selectedDateDigits(id){
- const raw=v(id);
- if(!raw)return "";
- const parts=raw.split("-");
- if(parts.length!==3)return "";
- return parts[2]+parts[1]+parts[0];
+function dateDigits(id){
+ const raw=v(id); if(!raw)return "";
+ const p=raw.split("-"); return p.length===3?p[2]+p[1]+p[0]:"";
 }
 function validate(){
  if(!v("date"))return "Please select the Date.";
@@ -162,103 +153,129 @@ function validate(){
  if(!v("loanAccount"))return "Please enter AGB Loan A/C.";
  if(!v("startDate"))return "Please select EMI Start From date.";
  if(!v("endDate"))return "Please select EMI End Date.";
+ if(v("endDate")<v("startDate"))return "EMI End Date cannot be earlier than EMI Start From date.";
  if(!v("phone"))return "Please enter Phone No.";
  if(!v("name"))return "Please enter Name as per Bank Records.";
  if(v("name").length>40)return "Name cannot exceed 40 characters.";
  return "";
 }
-function fit(ctx,text,max,start=14,min=6){
- let s=start;while(s>min){ctx.font=s+"px Arial";if(ctx.measureText(text).width<=max)return s;s-=.5}return min;
+function fitFont(ctx,text,maxWidth,start,min=20){
+ let s=start;
+ while(s>min){
+  ctx.font="900 "+s+"px Arial, Helvetica, sans-serif";
+  if(ctx.measureText(text).width<=maxWidth-10)return s;
+  s-=1;
+ }
+ return min;
 }
-function text(ctx,text,x,y,w,h,align="center",size=16){
- if(!text)return;let s=fit(ctx,text,w-8,size,6);ctx.font="900 "+s+"px Arial, Helvetica, sans-serif";ctx.fillStyle="#111";ctx.textBaseline="middle";ctx.textAlign=align;
- const xx=align==="center"?x+w/2:align==="right"?x+w:x;ctx.fillText(text,xx,y+h/2);ctx.textAlign="left";
+function drawBold(ctx,text,x,y,w,h,start=32,align="center"){
+ if(!text)return;
+ const size=fitFont(ctx,String(text),w,start,18);
+ ctx.font="900 "+size+"px Arial, Helvetica, sans-serif";
+ ctx.fillStyle="#111";
+ ctx.textAlign=align;
+ ctx.textBaseline="middle";
+ let xx=align==="left"?x:align==="right"?x+w:x+w/2;
+ ctx.fillText(String(text),xx,y+h/2);
+ ctx.textAlign="left";
 }
-function boxes(ctx,text,x,y,w,h,count,size=16){
- const s=String(text||"").slice(0,count),cw=w/count;ctx.font="900 "+size+"px Arial, Helvetica, sans-serif";ctx.fillStyle="#111";ctx.textAlign="center";ctx.textBaseline="middle";
- for(let i=0;i<s.length;i++)ctx.fillText(s[i],x+i*cw+cw/2,y+h/2+1);ctx.textAlign="left";
+function drawBoxes(ctx,text,x,y,w,h,count,start=31){
+ const s=String(text||"").slice(0,count);
+ const cw=w/count;
+ ctx.font="900 "+start+"px Arial, Helvetica, sans-serif";
+ ctx.fillStyle="#111";
+ ctx.textAlign="center";
+ ctx.textBaseline="middle";
+ for(let i=0;i<s.length;i++)ctx.fillText(s[i],x+i*cw+cw/2,y+h/2+1);
+ ctx.textAlign="left";
 }
 function renderForm(){
  return new Promise((resolve,reject)=>{
-  const canvas=document.createElement("canvas");canvas.width=BASE_W;canvas.height=BASE_H;
-  const ctx=canvas.getContext("2d", {alpha:false});
-  ctx.imageSmoothingEnabled=true;
-  ctx.imageSmoothingQuality="high";
+  const canvas=document.createElement("canvas");
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext("2d",{alpha:false});
   const img=new Image();
   img.onload=()=>{
-   ctx.drawImage(img,0,0,BASE_W,BASE_H);
-   ctx.save();
-   ctx.scale(SCALE,SCALE);
+   ctx.imageSmoothingEnabled=true;
+   ctx.imageSmoothingQuality="high";
+   ctx.drawImage(img,0,0,W,H);
 
-   // Exact locations are based on the supplied Excel template rendered to the background image.
-   boxes(ctx,dateDigits(),991,146,228,22,8,15);
-   boxes(ctx,v("accountNumber"),650,231,569,23,20,15);
-   boxes(ctx,v("ifsc").toUpperCase(),907,261,312,22,11,15);
-   boxes(ctx,selectedDateDigits("startDate"),110,473,229,23,8,15);
-   boxes(ctx,selectedDateDigits("endDate"),110,503,229,23,8,15);
+   // Coordinates below are measured directly from the supplied Excel template
+   // after it is converted to A4 at 300 DPI. No extra crop or page scaling is used.
 
-   text(ctx,v("bankName").toUpperCase(),140,260,623,23, "center", 16);
-   text(ctx,amountWords(v("emi")),224,292,683,23,"center",17);
-   text(ctx,String(Math.round(Number(v("emi")))),935,292,284,23,"center",17);
-   text(ctx,"AGB LOAN A/C NO "+v("loanAccount").toUpperCase(),140,355,482,23,"center",16);
-   text(ctx,v("phone"),111,591,257,22,"center",16);
-   text(ctx,v("name").toUpperCase(),397,585,254,22,"center",16);
+   // Fixed sponsor bank code and authorising bank.
+   drawBold(ctx,"PUNB0RRBAGB",408,243,566,43,31);
+   drawBold(ctx,"ASSAM GRAMIN BANK",1648,243,792,43,31);
 
-   ctx.restore();
+   // User-entered fields.
+   drawBoxes(ctx,dateDigits("date"),1987,132,454,44,8,31);
+   drawBoxes(ctx,v("accountNumber"),1309,301,1132,46,20,31);
+   drawBoxes(ctx,v("ifsc").toUpperCase(),1820,361,620,44,11,31);
+
+   drawBold(ctx,v("bankName").toUpperCase(),295,362,1240,43,31);
+   drawBold(ctx,amountWords(v("emi")),463,422,1359,46,34);
+   drawBold(ctx,String(Math.round(Number(v("emi")))),1876,423,565,45,34);
+
+   drawBold(ctx,"AGB LOAN A/C NO "+v("loanAccount").toUpperCase(),295,548,961,46,30);
+   drawBoxes(ctx,dateDigits("startDate"),238,783,455,44,8,31);
+   drawBoxes(ctx,dateDigits("endDate"),238,843,455,44,8,31);
+
+   drawBold(ctx,v("phone"),238,1016,511,45,31);
+   drawBold(ctx,v("name").toUpperCase(),805,1017,506,41,33);
+
    finalCanvas=canvas;
    document.getElementById("previewImage").src=canvas.toDataURL("image/png");
    document.getElementById("preview").style.display="block";
    resolve();
   };
-  img.onerror=()=>reject(new Error("Template image could not be loaded."));
+  img.onerror=()=>reject(new Error("The Excel-derived template image could not be loaded."));
   img.src="template-a4-300dpi.png";
  });
 }
 async function generate(){
- document.getElementById("error").style.display="none";document.getElementById("success").style.display="none";
- const e=validate();if(e){show("error",e);return;}
- if(v("endDate") < v("startDate")){show("error","EMI End Date cannot be earlier than EMI Start From date.");return;}
-  try{await renderForm();show("success","Form generated successfully. Review it before printing or downloading.");window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});}
- catch(err){console.error(err);show("error",err.message||"Could not generate the form.");}
+ show("",""); 
+ const err=validate();
+ if(err){show("error",err);return;}
+ try{
+  await renderForm();
+  show("success","Form generated successfully. Please review it before downloading.");
+  window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
+ }catch(e){
+  console.error(e);
+  show("error",e.message||"Could not generate the form.");
+ }
 }
-function pdfObject(){
+function makePDF(){
+ if(!finalCanvas){show("error","Generate the form first.");return null;}
  const {jsPDF}=window.jspdf;
- // Exact A4 portrait: 210 x 297 mm = 595.28 x 841.89 pt.
  const pdf=new jsPDF({
-   orientation:"portrait",
-   unit:"pt",
-   format:"a4",
-   compress:false
+  orientation:"portrait",
+  unit:"pt",
+  format:"a4",
+  compress:false
  });
- const pageW=pdf.internal.pageSize.getWidth();
- const pageH=pdf.internal.pageSize.getHeight();
-
- // Keep a small, equal margin on both sides so the form is centered.
- // The source remains a 2480 x 3508 lossless PNG; only the final placement is scaled.
- const imgW=2480, imgH=3508;
- const sideMargin=5*72/25.4; // 5 mm left and right
- const maxW=pageW-(sideMargin*2);
- const scale=Math.min(maxW/imgW,pageH/imgH);
- const drawW=imgW*scale, drawH=imgH*scale;
- const x=(pageW-drawW)/2;
- const y=(pageH-drawH)/2;
-
- // PNG is lossless. No JPEG conversion and no "FAST" image compression.
- pdf.addImage(
-   finalCanvas.toDataURL("image/png"),
-   "PNG",
-   x,y,drawW,drawH,
-   undefined,
-   "NONE"
- );
+ const pw=pdf.internal.pageSize.getWidth();
+ const ph=pdf.internal.pageSize.getHeight();
+ pdf.addImage(finalCanvas.toDataURL("image/png"),"PNG",0,0,pw,ph,undefined,"NONE");
  return pdf;
 }
-function downloadPDF(){if(!finalCanvas){show("error","Generate the form first.");return;}pdfObject().save("Filled_NACH_Mandate.pdf");}
-function printPDF(){if(!finalCanvas){show("error","Generate the form first.");return;}const pdf=pdfObject();pdf.autoPrint();const u=URL.createObjectURL(pdf.output("blob"));window.open(u,"_blank");}
+function downloadPDF(){
+ const pdf=makePDF();
+ if(pdf)pdf.save("Filled_NACH_Mandate.pdf");
+}
+function printPDF(){
+ const pdf=makePDF();
+ if(!pdf)return;
+ pdf.autoPrint();
+ const url=URL.createObjectURL(pdf.output("blob"));
+ window.open(url,"_blank");
+}
 function resetForm(){
- ["accountNumber","bankName","ifsc","emi","loanAccount","startDate","endDate","phone","name"].forEach(id=>document.getElementById(id).value="");
- document.getElementById("date").value="";document.getElementById("preview").style.display="none";
- document.getElementById("error").style.display="none";document.getElementById("success").style.display="none";
+ ["date","accountNumber","bankName","ifsc","emi","loanAccount","startDate","endDate","phone","name"]
+ .forEach(id=>document.getElementById(id).value="");
+ document.getElementById("preview").style.display="none";
+ document.getElementById("error").style.display="none";
+ document.getElementById("success").style.display="none";
  finalCanvas=null;
 }
 </script>
