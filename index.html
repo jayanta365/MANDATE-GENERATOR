@@ -157,8 +157,13 @@ function dateDigits(){
   return parts[2]+parts[1]+parts[0];
 }
 function selectedDateDigits(id){
-  const raw=document.getElementById(id).value.trim(); if(!raw)return "";
-  const parts=raw.split("-"); if(parts.length!==3)return "";
+  const el=document.getElementById(id);
+  // EMI End Date is displayed as DD/MM/YYYY, while its ISO value is kept
+  // separately in data-iso so the exact same DDMMYYYY box mapping is used.
+  const raw=(id==="endDate" && el.dataset.iso)?el.dataset.iso:el.value.trim();
+  if(!raw)return "";
+  const parts=raw.includes("-")?raw.split("-"):raw.split("/").reverse();
+  if(parts.length!==3)return "";
   return parts[2]+parts[1]+parts[0];
 }
 function addMonthsToDate(raw,months){
@@ -213,16 +218,24 @@ function fit(ctx,text,max,start=14,min=6,weight=700){
   }
   return min;
 }
+function verticalCenterBaseline(ctx,y,h){
+  // Canvas textBaseline="middle" can look optically high/low because it centers
+  // the font's em box rather than the visible glyphs. Use actual glyph metrics
+  // so every generated value sits in the visual middle of its field.
+  const m=ctx.measureText("Ag");
+  const ascent=m.actualBoundingBoxAscent||0;
+  const descent=m.actualBoundingBoxDescent||0;
+  return y+(h+ascent-descent)/2;
+}
 function text(ctx,text,x,y,w,h,align="center",size=14,weight=700){
   if(!text)return;
   const s=fit(ctx,text,w-8,size,6,weight);
   ctx.font=weight+" "+s+"px Arial";
   ctx.fillStyle="#111";
-  ctx.textBaseline="middle";
+  ctx.textBaseline="alphabetic";
   ctx.textAlign=align;
   const xx=align==="center"?x+w/2:align==="right"?x+w:x;
-  // Exact vertical centering: use the mathematical center of the field.
-  ctx.fillText(text,xx,y+h/2);
+  ctx.fillText(text,xx,verticalCenterBaseline(ctx,y,h));
   ctx.textAlign="left";
 }
 function boxes(ctx,text,x,y,w,h,count,size=14,weight=700){
@@ -230,8 +243,9 @@ function boxes(ctx,text,x,y,w,h,count,size=14,weight=700){
   ctx.font=weight+" "+size+"px Arial";
   ctx.fillStyle="#111";
   ctx.textAlign="center";
-  ctx.textBaseline="middle";
-  for(let i=0;i<s.length;i++)ctx.fillText(s[i],x+i*cw+cw/2,y+h/2);
+  ctx.textBaseline="alphabetic";
+  const baseline=verticalCenterBaseline(ctx,y,h);
+  for(let i=0;i<s.length;i++)ctx.fillText(s[i],x+i*cw+cw/2,baseline);
   ctx.textAlign="left";
 }
 function staticCenteredLabel(ctx,label,x,y,w,h,size=14){
@@ -242,8 +256,8 @@ function staticCenteredLabel(ctx,label,x,y,w,h,size=14){
   ctx.font="700 "+s+"px Arial";
   ctx.fillStyle="#111";
   ctx.textAlign="center";
-  ctx.textBaseline="middle";
-  ctx.fillText(label,x+w/2,y+h/2);
+  ctx.textBaseline="alphabetic";
+  ctx.fillText(label,x+w/2,verticalCenterBaseline(ctx,y,h));
   ctx.textAlign="left";
 }
 function renderForm(){
