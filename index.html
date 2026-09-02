@@ -17,62 +17,37 @@
 <div><label>Name as per Bank Records</label><input id="name" maxlength="40" placeholder="Enter name"></div>
 </div>
 <div class="buttons"><button type="button" class="primary" id="generateBtn">Generate Form</button><button type="button" class="secondary" id="resetBtn">Reset</button></div>
-<div id="preview" class="preview"><div class="title">Completed Form</div><img id="previewImage" alt="Completed NACH mandate form"><div class="buttons"><button type="button" class="primary" id="downloadBtn">Download PDF</button><button type="button" class="secondary" id="printBtn">Print / Save PDF</button></div><div class="note">The background is the supplied Excel-derived A4 template. The white border/bleed around the complete document is retained. Only the intended blank fields in the top Mandate Form are filled; the instructions and sample section are unchanged.</div></div><div class="footer">NACH Mandate Form Generator • Data is processed in your browser.</div></div></div>
+<div id="preview" class="preview"><div class="title">Completed Form</div><img id="previewImage" alt="Completed NACH mandate form"><div class="buttons"><button type="button" class="primary" id="downloadBtn">Download PDF</button><button type="button" class="secondary" id="printBtn">Print / Save PDF</button></div><div class="note">The template is taken directly from the supplied Excel format, converted from the original Excel layout and centered on A4 with a narrow white border around the main form content. The original CREATE / MODIFY / CANCEL controls, ticks and sample section remain part of the template.</div></div><div class="footer">NACH Mandate Form Generator • Data is processed in your browser.</div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 const W=2480,H=3508;let finalCanvas=null;
 const $=id=>document.getElementById(id); const v=id=>$(id).value.trim();
 function show(type,msg){const e=$('error'),s=$('success');e.style.display=type==='error'?'block':'none';s.style.display=type==='success'?'block':'none';if(type)$(type==='error'?'error':'success').textContent=msg;}
-function amountWords(n){n=Math.round(Number(n));if(!Number.isFinite(n)||n<0)return '';if(n===0)return 'ZERO ONLY';const o=['','ONE','TWO','THREE','FOUR','FIVE','SIX','SEVEN','EIGHT','NINE','TEN','ELEVEN','TWELVE','THIRTEEN','FOURTEEN','FIFTEEN','SIXTEEN','SEVENTEEN','EIGHTEEN','NINETEEN'],t=['','','TWENTY','THIRTY','FORTY','FIFTY','SIXTY','SEVENTY','EIGHTY','NINETY'];function two(x){return x<20?o[x]:t[Math.floor(x/10)]+(x%10?' '+o[x%10]:'')}function three(x){return x<100?two(x):o[Math.floor(x/100)]+' HUNDRED'+(x%100?' '+two(x%100):'')}const a=[];let x=n,cr=Math.floor(x/10000000);x%=10000000;let la=Math.floor(x/100000);x%=100000;let th=Math.floor(x/1000);x%=1000;if(cr)a.push(three(cr)+' CRORE');if(la)a.push(three(la)+' LAKH');if(th)a.push(three(th)+' THOUSAND');if(x)a.push(three(x));return a.join(' ')+' ONLY';}
-function dateDigits(id){const p=v(id).split('-');return p.length===3?p[2]+p[1]+p[0]:'';}
-function addMonthsCalendar(raw,months){const p=raw.split('-');if(p.length!==3)return '';let y=+p[0],m=+p[1]-1,d=+p[2];const target=m+months,ty=y+Math.floor(target/12),tm=((target%12)+12)%12,last=new Date(Date.UTC(ty,tm+1,0)).getUTCDate();d=Math.min(d,last);return `${ty}-${String(tm+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
+function amountWords(n){n=Math.round(Number(n));if(!Number.isFinite(n)||n<0)return '';if(n===0)return 'ZERO ONLY';const o=['','ONE','TWO','THREE','FOUR','FIVE','SIX','SEVEN','EIGHT','NINE','TEN','ELEVEN','TWELVE','THIRTEEN','FOURTEEN','FIFTEEN','SIXTEEN','SEVENTEEN','EIGHTEEN','NINETEEN'],t=['','','TWENTY','THIRTY','FORTY','FIFTY','SIXTY','SEVENTY','EIGHTY','NINETY'];function two(x){return x<20?o[x]:t[Math.floor(x/10)]+(x%10?' '+o[x%10]:'')}function three(x){return x<100?two(x):o[Math.floor(x/100)]+' HUNDRED'+(x%100?' '+two(x%100):'')}const a=[];let x=n,cr=Math.floor(x/10000000);x%=10000000,la=Math.floor(x/100000);x%=100000,th=Math.floor(x/1000);x%=1000;if(cr)a.push(three(cr)+' CRORE');if(la)a.push(three(la)+' LAKH');if(th)a.push(three(th)+' THOUSAND');if(x)a.push(three(x));return a.join(' ')+' ONLY';}
+function dateParts(raw){return raw?raw.split('-'):[]}function dateDigits(id){const p=dateParts(v(id));return p.length===3?p[2]+p[1]+p[0]:'';}
+function addMonthsCalendar(raw,months){const p=dateParts(raw);if(p.length!==3)return '';let y=+p[0],m=+p[1]-1,d=+p[2];const targetMonth=m+months;const ty=y+Math.floor(targetMonth/12),tm=((targetMonth%12)+12)%12;const last=new Date(Date.UTC(ty,tm+1,0)).getUTCDate();d=Math.min(d,last);return `${ty}-${String(tm+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
 function updateEndDate(){const start=v('startDate'),period=Number(v('loanPeriod'));$('endDate').value=(start&&Number.isInteger(period)&&period>=1)?addMonthsCalendar(start,period-1):'';}
 $('startDate').addEventListener('change',updateEndDate);$('loanPeriod').addEventListener('input',updateEndDate);
-function validate(){if(!v('date'))return 'Please select the Date.';if(!v('accountNumber'))return 'Please enter Bank A/C Number.';if(!v('bankName'))return 'Please enter Bank Name.';if(!v('ifsc'))return 'Please enter IFSC Code.';if(v('ifsc').length>11)return 'IFSC Code cannot exceed 11 characters.';if(!/^\d+(\.\d{1,2})?$/.test(v('emi'))||Number(v('emi'))<=0)return 'Please enter a valid EMI amount.';if(!v('loanAccount'))return 'Please enter AGB Loan A/C.';if(!v('startDate'))return 'Please select EMI Start From date.';if(!Number.isInteger(Number(v('loanPeriod')))||Number(v('loanPeriod'))<1)return 'Please enter the loan period in whole months.';updateEndDate();if(!v('endDate'))return 'Could not calculate EMI End Date.';if(!v('phone'))return 'Please enter Phone No.';if(!v('name'))return 'Please enter Name as per Bank Records.';if(v('name').length>40)return 'Name cannot exceed 40 characters.';return '';}
-function fitFont(ctx,text,maxWidth,start,min=20){let s=start;while(s>min){ctx.font='900 '+s+'px Arial,Helvetica,sans-serif';if(ctx.measureText(text).width<=maxWidth-10)return s;s--}return min;}
+function validate(){if(!v('date'))return 'Please select the Date.';if(!v('accountNumber'))return 'Please enter Bank A/C Number.';if(!v('bankName'))return 'Please enter Bank Name.';if(!v('ifsc'))return 'Please enter IFSC Code.';if(v('ifsc').length>11)return 'IFSC Code cannot exceed 11 characters.';if(!/^\d+(\.\d{1,2})?$/.test(v('emi'))||Number(v('emi'))<=0)return 'Please enter a valid EMI amount.';if(!v('loanAccount'))return 'Please enter AGB Loan A/C.';if(!v('startDate'))return 'Please select EMI Start From date.';if(!Number.isInteger(Number(v('loanPeriod'))) || Number(v('loanPeriod'))<1)return 'Please enter the loan period in whole months.';updateEndDate();if(!v('endDate'))return 'Could not calculate EMI End Date.';if(!v('phone'))return 'Please enter Phone No.';if(!v('name'))return 'Please enter Name as per Bank Records.';if(v('name').length>40)return 'Name cannot exceed 40 characters.';return '';}
+function fitFont(ctx,text,maxWidth,start,min=20){let s=start;while(s>min){ctx.font='900 '+s+'px Arial,Helvetica,sans-serif';if(ctx.measureText(text).width<=maxWidth-8)return s;s--}return min;}
 function drawBold(ctx,text,x,y,w,h,start=31){if(!text)return;const size=fitFont(ctx,String(text),w,start,18);ctx.font='900 '+size+'px Arial,Helvetica,sans-serif';ctx.fillStyle='#111';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(text),x+w/2,y+h/2+1);ctx.textAlign='left';}
-function drawBoxes(ctx,text,x,y,w,h,count,start=30){const s=String(text||'').replace(/\s/g,'').slice(0,count),cw=w/count;ctx.font='900 '+start+'px Arial,Helvetica,sans-serif';ctx.fillStyle='#111';ctx.textAlign='center';ctx.textBaseline='middle';for(let i=0;i<s.length;i++)ctx.fillText(s[i],x+i*cw+cw/2,y+h/2+1);ctx.textAlign='left';}
+function clearField(ctx,x,y,w,h){ctx.save();ctx.fillStyle='#fff';ctx.fillRect(x+2,y+2,w-4,h-4);ctx.restore();}
+function drawBoxes(ctx,text,x,y,w,h,count,start=30){const s=String(text||'').slice(0,count),cw=w/count;ctx.font='900 '+start+'px Arial,Helvetica,sans-serif';ctx.fillStyle='#111';ctx.textAlign='center';ctx.textBaseline='middle';for(let i=0;i<s.length;i++)ctx.fillText(s[i],x+i*cw+cw/2,y+h/2+1);ctx.textAlign='left';}
 function renderForm(){return new Promise((resolve,reject)=>{const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;const ctx=canvas.getContext('2d',{alpha:false});const img=new Image();img.onload=()=>{ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(img,0,0,W,H);
-// Coordinates below are measured directly from the supplied Excel-derived A4 template (2480x3508).
-// The background image is never resized or re-laid-out here. This preserves the exact field design,
-// including the CREATE / MODIFY / CANCEL oval controls and their tick marks.
-
-function clearInside(ctx,x,y,w,h){ctx.save();ctx.fillStyle='#fff';ctx.fillRect(x+3,y+3,w-6,h-6);ctx.restore();}
-
-// ALWAYS: Sponsor bank code and I/We authorize. The original template already contains these values;
-// we replace only the text area so they appear in the same bold weight as other entered data.
-clearInside(ctx,365,483,635,44);
-drawBold(ctx,'PUNB0RRBAGB',365,483,635,44,30);
-clearInside(ctx,1557,483,843,44);
-drawBold(ctx,'ASSAM GRAMIN BANK',1557,483,843,44,30);
-
-// Date: 8 boxes, DDMMYYYY.
-drawBoxes(ctx,dateDigits('date'),1968,388,430,39,8,30);
-
-// 2) Bank a/c number: exact field labelled "Bank a/c number".
-drawBoxes(ctx,v('accountNumber'),1287,527,1103,46,20,30);
-
-// 3) Bank name: exact field labelled "with bank".
-drawBold(ctx,v('bankName').toUpperCase(),350,579,1130,45,30);
-
-// 4) IFSC code: exact 11-box IFSC/MICR field.
-drawBoxes(ctx,v('ifsc').toUpperCase(),1706,579,684,45,11,30);
-
-// 5) EMI amount: words in the "an amount of Rupees" field and figures in the right-hand amount box.
-drawBold(ctx,amountWords(v('emi')),493,625,1218,44,31);
-drawBold(ctx,String(Math.round(Number(v('emi')))),1762,625,628,44,31);
-
-// 6) Reference 1: fixed phrase followed by the AGB loan account number.
-drawBold(ctx,'AGB LOAN A/C NO '+v('loanAccount').toUpperCase(),350,763,857,46,28);
-
-// 7) EMI Start From -> From boxes; calculated EMI End Date -> To boxes.
-drawBoxes(ctx,dateDigits('startDate'),300,973,435,46,8,30);
-drawBoxes(ctx,dateDigits('endDate'),300,1028,435,46,8,30);
-
-// Phone and first holder's name.
-drawBold(ctx,v('phone'),238,1198,514,46,30);
-drawBold(ctx,v('name').toUpperCase(),840,1198,495,46,31);
-
+// Coordinates are mapped from the original Excel template rendered at 150 dpi, then cropped and centered on A4 with a narrow white border.
+// Fixed original template text remains untouched; only user fields are overlaid.
+drawBoxes(ctx,dateDigits('date'),1969,377,433,41,8,29);
+drawBoxes(ctx,v('accountNumber'),1326,544,1076,41,20,29);
+clearField(ctx,356,486,527,41);drawBold(ctx,'PUNB0RRBAGB',356,486,527,41,29);
+clearField(ctx,1526,486,876,41);drawBold(ctx,v('bankName').toUpperCase(),1526,486,876,41,29);
+drawBoxes(ctx,v('ifsc').toUpperCase(),1809,544,593,41,11,29);
+drawBold(ctx,amountWords(v('emi')),514,600,1298,41,31);
+drawBold(ctx,String(Math.round(Number(v('emi')))),1863,600,539,41,31);
+drawBold(ctx,'AGB LOAN A/C NO '+v('loanAccount').toUpperCase(),354,655,919,41,28);
+drawBoxes(ctx,dateDigits('startDate'),301,999,435,41,8,29);
+drawBoxes(ctx,dateDigits('endDate'),301,1057,435,41,8,29);
+drawBold(ctx,v('phone'),303,1221,486,41,29);
+drawBold(ctx,v('name').toUpperCase(),842,1221,481,41,31);
 finalCanvas=canvas;$('previewImage').src=canvas.toDataURL('image/png');$('preview').style.display='block';resolve();};img.onerror=()=>reject(new Error('Template image could not be loaded.'));img.src='template-a4-300dpi.png';});}
 async function generate(){show('','');const err=validate();if(err){show('error',err);return;}try{await renderForm();show('success','Form generated successfully. Review it before downloading.');window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});}catch(e){show('error',e.message||'Could not generate the form.');}}
 function makePDF(){if(!finalCanvas){show('error','Generate the form first.');return null;}const {jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4',compress:false});const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight();pdf.addImage(finalCanvas.toDataURL('image/png'),'PNG',0,0,pw,ph,undefined,'NONE');return pdf;}
