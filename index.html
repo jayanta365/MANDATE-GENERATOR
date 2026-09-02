@@ -36,11 +36,13 @@ function drawBoxes(ctx,text,x,y,w,h,count,start=30){const s=String(text||'').sli
 function renderForm(){return new Promise((resolve,reject)=>{const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;const ctx=canvas.getContext('2d',{alpha:false});const img=new Image();img.onload=()=>{ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(img,0,0,W,H);
 // Coordinates are mapped from the original Excel template rendered at 150 dpi, then cropped and centered on A4 with a narrow white border.
 // Fixed original template text remains untouched; only user fields are overlaid.
-drawBoxes(ctx,dateDigits('date'),1969,377,433,41,8,29);
-drawBoxes(ctx,v('accountNumber'),1326,544,1076,41,20,29);
-clearField(ctx,356,486,527,41);drawBold(ctx,'PUNB0RRBAGB',356,486,527,41,29);
-clearField(ctx,1526,486,876,41);drawBold(ctx,v('bankName').toUpperCase(),1526,486,876,41,29);
-drawBoxes(ctx,v('ifsc').toUpperCase(),1809,544,593,41,11,29);
+drawBoxes(ctx,dateDigits('date'),1968,379,434,45,8,29);
+drawBoxes(ctx,v('accountNumber'),1323,541,1079,45,20,29);
+clearField(ctx,464,485,541,45);drawBold(ctx,'PUNB0RRBAGB',464,485,541,45,29);
+clearField(ctx,1644,485,758,45);drawBold(ctx,'ASSAM GRAMIN BANK',1644,485,758,45,29);
+// Variable bank name: the 'with bank' field remains editable and is filled from the user's input.
+clearField(ctx,411,541,594,45);drawBold(ctx,v('bankName').toUpperCase(),411,541,594,45,29);
+drawBoxes(ctx,v('ifsc').toUpperCase(),1809,541,593,45,11,29);
 drawBold(ctx,amountWords(v('emi')),514,600,1298,41,31);
 drawBold(ctx,String(Math.round(Number(v('emi')))),1863,600,539,41,31);
 drawBold(ctx,'AGB LOAN A/C NO '+v('loanAccount').toUpperCase(),354,655,919,41,28);
