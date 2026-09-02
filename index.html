@@ -12,12 +12,12 @@
 <div><label>AGB Loan A/C</label><input id="loanAccount" maxlength="40" placeholder="Enter AGB loan A/C"></div>
 <div><label>EMI Start From</label><input id="startDate" type="date"></div>
 <div><label>Loan Period (Months)</label><input id="loanPeriod" type="number" min="1" max="600" step="1" placeholder="Example: 72"><div class="hint">Enter total number of EMIs/months.</div></div>
-<div><label>EMI End Date (calculated)</label><input id="endDate" type="date" readonly><div class="hint">The last EMI date is start date + (loan period − 1) months.</div></div>
+<div><label>EMI End Date (calculated)</label><input id="endDate" type="date" readonly><div class="hint">For 72 EMIs, the last EMI date is 71 months after the start date.</div></div>
 <div><label>Phone No.</label><input id="phone" maxlength="20" inputmode="tel" placeholder="Enter phone number"></div>
 <div><label>Name as per Bank Records</label><input id="name" maxlength="40" placeholder="Enter name"></div>
 </div>
 <div class="buttons"><button type="button" class="primary" id="generateBtn">Generate Form</button><button type="button" class="secondary" id="resetBtn">Reset</button></div>
-<div id="preview" class="preview"><div class="title">Completed Form</div><img id="previewImage" alt="Completed NACH mandate form"><div class="buttons"><button type="button" class="primary" id="downloadBtn">Download PDF</button><button type="button" class="secondary" id="printBtn">Print / Save PDF</button></div><div class="note">The template is taken directly from the supplied Excel format, converted from the original Excel layout and centered on A4 with a narrow white border around the main form content. The original CREATE / MODIFY / CANCEL controls, ticks and sample section remain part of the template.</div></div><div class="footer">NACH Mandate Form Generator • Data is processed in your browser.</div></div></div>
+<div id="preview" class="preview"><div class="title">Completed Form</div><img id="previewImage" alt="Completed NACH mandate form"><div class="buttons"><button type="button" class="primary" id="downloadBtn">Download PDF</button><button type="button" class="secondary" id="printBtn">Print / Save PDF</button></div><div class="note">The template is taken directly from the supplied Excel format, converted to A4 portrait with 1.27 cm margins on all four sides. The original CREATE / MODIFY / CANCEL controls, ticks and sample section remain part of the template.</div></div><div class="footer">NACH Mandate Form Generator • Data is processed in your browser.</div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 const W=2480,H=3508;let finalCanvas=null;
@@ -31,26 +31,24 @@ $('startDate').addEventListener('change',updateEndDate);$('loanPeriod').addEvent
 function validate(){if(!v('date'))return 'Please select the Date.';if(!v('accountNumber'))return 'Please enter Bank A/C Number.';if(!v('bankName'))return 'Please enter Bank Name.';if(!v('ifsc'))return 'Please enter IFSC Code.';if(v('ifsc').length>11)return 'IFSC Code cannot exceed 11 characters.';if(!/^\d+(\.\d{1,2})?$/.test(v('emi'))||Number(v('emi'))<=0)return 'Please enter a valid EMI amount.';if(!v('loanAccount'))return 'Please enter AGB Loan A/C.';if(!v('startDate'))return 'Please select EMI Start From date.';if(!Number.isInteger(Number(v('loanPeriod'))) || Number(v('loanPeriod'))<1)return 'Please enter the loan period in whole months.';updateEndDate();if(!v('endDate'))return 'Could not calculate EMI End Date.';if(!v('phone'))return 'Please enter Phone No.';if(!v('name'))return 'Please enter Name as per Bank Records.';if(v('name').length>40)return 'Name cannot exceed 40 characters.';return '';}
 function fitFont(ctx,text,maxWidth,start,min=20){let s=start;while(s>min){ctx.font='900 '+s+'px Arial,Helvetica,sans-serif';if(ctx.measureText(text).width<=maxWidth-8)return s;s--}return min;}
 function drawBold(ctx,text,x,y,w,h,start=31){if(!text)return;const size=fitFont(ctx,String(text),w,start,18);ctx.font='900 '+size+'px Arial,Helvetica,sans-serif';ctx.fillStyle='#111';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(text),x+w/2,y+h/2+1);ctx.textAlign='left';}
-function clearField(ctx,x,y,w,h){ctx.save();ctx.fillStyle='#fff';ctx.fillRect(x+2,y+2,w-4,h-4);ctx.restore();}
 function drawBoxes(ctx,text,x,y,w,h,count,start=30){const s=String(text||'').slice(0,count),cw=w/count;ctx.font='900 '+start+'px Arial,Helvetica,sans-serif';ctx.fillStyle='#111';ctx.textAlign='center';ctx.textBaseline='middle';for(let i=0;i<s.length;i++)ctx.fillText(s[i],x+i*cw+cw/2,y+h/2+1);ctx.textAlign='left';}
 function renderForm(){return new Promise((resolve,reject)=>{const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;const ctx=canvas.getContext('2d',{alpha:false});const img=new Image();img.onload=()=>{ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(img,0,0,W,H);
-// Coordinates are mapped from the original Excel template rendered at 150 dpi, then cropped and centered on A4 with a narrow white border.
+// Coordinates are mapped from the Excel-derived A4 template (1241x1754 at 150dpi -> 2480x3508).
 // Fixed original template text remains untouched; only user fields are overlaid.
-drawBoxes(ctx,dateDigits('date'),1969,377,433,41,8,29);
-drawBoxes(ctx,v('accountNumber'),1326,544,1076,41,20,29);
-clearField(ctx,356,486,527,41);drawBold(ctx,'PUNB0RRBAGB',356,486,527,41,29);
-clearField(ctx,1526,486,876,41);drawBold(ctx,v('bankName').toUpperCase(),1526,486,876,41,29);
-drawBoxes(ctx,v('ifsc').toUpperCase(),1809,544,593,41,11,29);
-drawBold(ctx,amountWords(v('emi')),514,600,1298,41,31);
-drawBold(ctx,String(Math.round(Number(v('emi')))),1863,600,539,41,31);
-drawBold(ctx,'AGB LOAN A/C NO '+v('loanAccount').toUpperCase(),354,655,919,41,28);
-drawBoxes(ctx,dateDigits('startDate'),301,999,435,41,8,29);
-drawBoxes(ctx,dateDigits('endDate'),301,1057,435,41,8,29);
-drawBold(ctx,v('phone'),303,1221,486,41,29);
-drawBold(ctx,v('name').toUpperCase(),842,1221,481,41,31);
+drawBoxes(ctx,dateDigits('date'),1702,196,356,36,8,29);
+drawBoxes(ctx,v('accountNumber'),1052,326,986,36,20,29);
+drawBold(ctx,v('bankName').toUpperCase(),368,374,978,36,29);
+drawBoxes(ctx,v('ifsc').toUpperCase(),1570,374,536,36,11,29);
+drawBold(ctx,amountWords(v('emi')),414,422,980,36,31);
+drawBold(ctx,String(Math.round(Number(v('emi')))),1570,422,536,36,31);
+drawBold(ctx,'AGB LOAN A/C NO '+v('loanAccount').toUpperCase(),368,468,756,36,28);
+drawBoxes(ctx,dateDigits('startDate'),202,644,358,36,8,29);
+drawBoxes(ctx,dateDigits('endDate'),202,684,358,36,8,29);
+drawBold(ctx,v('phone'),324,752,356,36,29);
+drawBold(ctx,v('name').toUpperCase(),620,800,350,34,31);
 finalCanvas=canvas;$('previewImage').src=canvas.toDataURL('image/png');$('preview').style.display='block';resolve();};img.onerror=()=>reject(new Error('Template image could not be loaded.'));img.src='template-a4-300dpi.png';});}
 async function generate(){show('','');const err=validate();if(err){show('error',err);return;}try{await renderForm();show('success','Form generated successfully. Review it before downloading.');window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});}catch(e){show('error',e.message||'Could not generate the form.');}}
-function makePDF(){if(!finalCanvas){show('error','Generate the form first.');return null;}const {jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4',compress:false});const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight();pdf.addImage(finalCanvas.toDataURL('image/png'),'PNG',0,0,pw,ph,undefined,'NONE');return pdf;}
+function makePDF(){if(!finalCanvas){show('error','Generate the form first.');return null;}const {jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4',compress:false});const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight(),m=36;const dw=pw-2*m,dh=ph-2*m;pdf.addImage(finalCanvas.toDataURL('image/png'),'PNG',m,m,dw,dh,undefined,'NONE');return pdf;}
 function downloadPDF(){const pdf=makePDF();if(pdf)pdf.save('Filled_NACH_Mandate.pdf');}function printPDF(){const pdf=makePDF();if(!pdf)return;pdf.autoPrint();window.open(URL.createObjectURL(pdf.output('blob')),'_blank');}
 function resetForm(){['date','accountNumber','bankName','ifsc','emi','loanAccount','startDate','loanPeriod','endDate','phone','name'].forEach(id=>$(id).value='');$('preview').style.display='none';$('error').style.display='none';$('success').style.display='none';finalCanvas=null;}
 $('generateBtn').addEventListener('click',generate);$('resetBtn').addEventListener('click',resetForm);$('downloadBtn').addEventListener('click',downloadPDF);$('printBtn').addEventListener('click',printPDF);
