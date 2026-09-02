@@ -33,7 +33,7 @@ button{flex:1;border:0;border-radius:10px;padding:14px;font-size:15px;font-weigh
 </head>
 <body>
 <div class="container">
-<div class="header"><h1>Mandate Form Generator</h1><p>Fill the mandate form using the supplied Excel template.</p></div>
+<div class="header"><h1>Mandate Form Generator</h1><p>Fill the mandate form and generate an A4 PDF.</p></div>
 <div class="card">
 <div id="error" class="message error"></div>
 <div id="success" class="message success"></div>
@@ -45,42 +45,57 @@ button{flex:1;border:0;border-radius:10px;padding:14px;font-size:15px;font-weigh
 <input id="date" type="date">
 <div class="hint">Select the required date using the date picker.</div>
 </div>
+
 <div>
 <label>Bank A/C Number</label>
 <input id="accountNumber" maxlength="20" placeholder="Enter account number">
 <div class="hint">One character will be placed in each box.</div>
 </div>
+
 <div>
 <label>Bank Name</label>
 <input id="bankName" maxlength="60" placeholder="Enter bank name">
 </div>
+
 <div>
 <label>IFSC Code</label>
 <input id="ifsc" maxlength="11" placeholder="Enter IFSC code">
 <div class="hint">Maximum 11 characters.</div>
 </div>
+
 <div>
 <label>EMI Amount (₹)</label>
 <input id="emi" inputmode="numeric" maxlength="13" placeholder="Example: 12300">
 </div>
+
 <div>
 <label>AGB Loan A/C</label>
 <input id="loanAccount" maxlength="40" placeholder="Enter AGB loan A/C">
 </div>
+
 <div>
 <label>EMI Start From</label>
 <input id="startDate" type="date">
-<div class="hint">Select EMI start date using the date picker.</div>
+<div class="hint">This date is used to calculate the EMI end date.</div>
 </div>
+
+<div>
+<label>Loan Period (Months)</label>
+<input id="loanPeriod" type="number" min="1" max="360" step="1" placeholder="Example: 72">
+<div class="hint">Enter the total number of EMI months.</div>
+</div>
+
 <div>
 <label>EMI End Date</label>
-<input id="endDate" type="date">
-<div class="hint">Select EMI end date using the date picker.</div>
+<input id="endDate" type="text" class="readonly" readonly placeholder="Calculated automatically">
+<div class="hint">Calculated from EMI Start From + Loan Period.</div>
 </div>
+
 <div>
 <label>Phone No.</label>
 <input id="phone" maxlength="20" inputmode="tel" placeholder="Enter phone number">
 </div>
+
 <div>
 <label>Name as per Bank Records</label>
 <input id="name" maxlength="40" placeholder="Enter name">
@@ -99,180 +114,217 @@ button{flex:1;border:0;border-radius:10px;padding:14px;font-size:15px;font-weigh
 <button class="primary" onclick="downloadPDF()">Download PDF</button>
 <button class="secondary" onclick="printPDF()">Print / Save PDF</button>
 </div>
-<div class="buttons">
-<button class="secondary" onclick="downloadExcel()">Download Filled Excel</button>
-</div>
 <div class="note">
-The PDF is generated from a high-resolution rendering of the supplied Excel template. Only the top Mandate Form is filled. The instructions and sample section remain unchanged.
+The PDF is generated from the supplied Excel-derived template. Only the top Mandate Form is filled; the instructions and sample section remain unchanged. No filled Excel file is generated or offered for download.
 </div>
 </div>
 <div class="footer">Mandate Form Generator • Data stays in your browser.</div>
 </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx-populate@1.21.0/browser/xlsx-populate.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 const BASE_W=1404, BASE_H=1985;
-let finalCanvas=null, filledWorkbook=null;
+// Visible template area: keeps the form itself while removing the large unused canvas area.
+// The same crop is used for preview and PDF, so the input coordinates are not changed.
+const CONTENT_CROP={x:0,y:90,w:1230,h:1559};
+let finalCanvas=null, printCanvas=null;
 
-function today(){
- const d=new Date();
- return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();
-}
 function v(id){return document.getElementById(id).value.trim();}
 function digits(s){return String(s||"").replace(/\D/g,"");}
 function show(type,msg){
- const e=document.getElementById("error"),s=document.getElementById("success");
- e.style.display=type==="error"?"block":"none";s.style.display=type==="success"?"block":"none";
- (type==="error"?e:s).textContent=msg;
+  const e=document.getElementById("error"),s=document.getElementById("success");
+  e.style.display=type==="error"?"block":"none";s.style.display=type==="success"?"block":"none";
+  (type==="error"?e:s).textContent=msg;
 }
 function amountWords(n){
- n=Math.round(Number(n)); if(!Number.isFinite(n)||n<0)return "";
- if(n===0)return "ZERO ONLY";
- const o=["","ONE","TWO","THREE","FOUR","FIVE","SIX","SEVEN","EIGHT","NINE","TEN","ELEVEN","TWELVE","THIRTEEN","FOURTEEN","FIFTEEN","SIXTEEN","SEVENTEEN","EIGHTEEN","NINETEEN"];
- const t=["","","TWENTY","THIRTY","FORTY","FIFTY","SIXTY","SEVENTY","EIGHTY","NINETY"];
- function two(x){return x<20?o[x]:t[Math.floor(x/10)]+(x%10?" "+o[x%10]:"");}
- function three(x){return x<100?two(x):o[Math.floor(x/100)]+" HUNDRED"+(x%100?" "+two(x%100):"");}
- const a=[];let x=n;
- const cr=Math.floor(x/10000000);x%=10000000;
- const la=Math.floor(x/100000);x%=100000;
- const th=Math.floor(x/1000);x%=1000;
- if(cr)a.push(three(cr)+" CRORE");if(la)a.push(three(la)+" LAKH");if(th)a.push(three(th)+" THOUSAND");if(x)a.push(three(x));
- return a.join(" ")+" ONLY";
+  n=Math.round(Number(n)); if(!Number.isFinite(n)||n<0)return "";
+  if(n===0)return "ZERO ONLY";
+  const o=["","ONE","TWO","THREE","FOUR","FIVE","SIX","SEVEN","EIGHT","NINE","TEN","ELEVEN","TWELVE","THIRTEEN","FOURTEEN","FIFTEEN","SIXTEEN","SEVENTEEN","EIGHTEEN","NINETEEN"];
+  const t=["","","TWENTY","THIRTY","FORTY","FIFTY","SIXTY","SEVENTY","EIGHTY","NINETY"];
+  function two(x){return x<20?o[x]:t[Math.floor(x/10)]+(x%10?" "+o[x%10]:"");}
+  function three(x){return x<100?two(x):o[Math.floor(x/100)]+" HUNDRED"+(x%100?" "+two(x%100):"");}
+  const a=[];let x=n;
+  const cr=Math.floor(x/10000000);x%=10000000;
+  const la=Math.floor(x/100000);x%=100000;
+  const th=Math.floor(x/1000);x%=1000;
+  if(cr)a.push(three(cr)+" CRORE");if(la)a.push(three(la)+" LAKH");if(th)a.push(three(th)+" THOUSAND");if(x)a.push(three(x));
+  return a.join(" ")+" ONLY";
 }
 function dateDigits(){
- const raw=v("date");
- if(!raw)return "";
- const parts=raw.split("-");
- if(parts.length!==3)return "";
- return parts[2]+parts[1]+parts[0];
+  const raw=v("date"); if(!raw)return "";
+  const parts=raw.split("-"); if(parts.length!==3)return "";
+  return parts[2]+parts[1]+parts[0];
 }
 function selectedDateDigits(id){
- const raw=v(id);
- if(!raw)return "";
- const parts=raw.split("-");
- if(parts.length!==3)return "";
- return parts[2]+parts[1]+parts[0];
+  const raw=document.getElementById(id).value.trim(); if(!raw)return "";
+  const parts=raw.split("-"); if(parts.length!==3)return "";
+  return parts[2]+parts[1]+parts[0];
+}
+function addMonthsToDate(raw,months){
+  if(!raw||!Number.isInteger(months)||months<1)return "";
+  const [yy,mm,dd]=raw.split("-").map(Number);
+  if(!yy||!mm||!dd)return "";
+  // Same calendar day after the requested loan period, matching the original sample:
+  // 10/01/2024 + 72 months = 10/01/2030.
+  const d=new Date(yy,mm-1,dd);
+  const targetMonth=(mm-1)+months;
+  d.setDate(1);
+  d.setMonth(targetMonth);
+  const lastDay=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+  d.setDate(Math.min(dd,lastDay));
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function formatDisplayDate(raw){
+  if(!raw)return "";
+  const [yy,mm,dd]=raw.split("-");
+  return dd+"/"+mm+"/"+yy;
+}
+function updateEndDate(){
+  const start=v("startDate"), period=Number(v("loanPeriod"));
+  const end=addMonthsToDate(start,period);
+  document.getElementById("endDate").value=formatDisplayDate(end);
+  document.getElementById("endDate").dataset.iso=end||"";
 }
 function validate(){
- if(!v("date"))return "Please select the Date.";
- if(!v("accountNumber"))return "Please enter Bank A/C Number.";
- if(v("accountNumber").length>20)return "Bank A/C Number cannot exceed 20 characters.";
- if(!v("bankName"))return "Please enter Bank Name.";
- if(!v("ifsc"))return "Please enter IFSC Code.";
- if(v("ifsc").length>11)return "IFSC Code cannot exceed 11 characters.";
- if(!/^\d+(\.\d{1,2})?$/.test(v("emi"))||Number(v("emi"))<=0)return "Please enter a valid EMI amount.";
- if(!v("loanAccount"))return "Please enter AGB Loan A/C.";
- if(!v("startDate"))return "Please select EMI Start From date.";
- if(!v("endDate"))return "Please select EMI End Date.";
- if(!v("phone"))return "Please enter Phone No.";
- if(!v("name"))return "Please enter Name as per Bank Records.";
- if(v("name").length>40)return "Name cannot exceed 40 characters.";
- return "";
+  if(!v("date"))return "Please select the Date.";
+  if(!v("accountNumber"))return "Please enter Bank A/C Number.";
+  if(v("accountNumber").length>20)return "Bank A/C Number cannot exceed 20 characters.";
+  if(!v("bankName"))return "Please enter Bank Name.";
+  if(!v("ifsc"))return "Please enter IFSC Code.";
+  if(v("ifsc").length!==11)return "IFSC Code must contain exactly 11 characters.";
+  if(!/^\d+(\.\d{1,2})?$/.test(v("emi"))||Number(v("emi"))<=0)return "Please enter a valid EMI amount.";
+  if(!v("loanAccount"))return "Please enter AGB Loan A/C.";
+  if(!v("startDate"))return "Please select EMI Start From date.";
+  const period=Number(v("loanPeriod"));
+  if(!Number.isInteger(period)||period<1||period>360)return "Please enter a valid Loan Period in whole months (1–360).";
+  if(!document.getElementById("endDate").dataset.iso)return "EMI End Date could not be calculated.";
+  if(!v("phone"))return "Please enter Phone No.";
+  if(!v("name"))return "Please enter Name as per Bank Records.";
+  if(v("name").length>40)return "Name cannot exceed 40 characters.";
+  return "";
 }
-function fit(ctx,text,max,start=14,min=6){
- let s=start;while(s>min){ctx.font=s+"px Arial";if(ctx.measureText(text).width<=max)return s;s-=.5}return min;
+function fit(ctx,text,max,start=14,min=6,weight=700){
+  let s=start;
+  while(s>min){
+    ctx.font=weight+" "+s+"px Arial";
+    if(ctx.measureText(text).width<=max)return s;
+    s-=.5;
+  }
+  return min;
 }
-function text(ctx,text,x,y,w,h,align="center",size=14){
- if(!text)return;let s=fit(ctx,text,w-8,size,6);ctx.font=s+"px Arial";ctx.fillStyle="#111";ctx.textBaseline="middle";ctx.textAlign=align;
- const xx=align==="center"?x+w/2:align==="right"?x+w:x;ctx.fillText(text,xx,y+h/2);ctx.textAlign="left";
+function text(ctx,text,x,y,w,h,align="center",size=14,weight=700){
+  if(!text)return;
+  const s=fit(ctx,text,w-8,size,6,weight);
+  ctx.font=weight+" "+s+"px Arial";
+  ctx.fillStyle="#111";
+  ctx.textBaseline="middle";
+  ctx.textAlign=align;
+  const xx=align==="center"?x+w/2:align==="right"?x+w:x;
+  ctx.fillText(text,xx,y+h/2);
+  ctx.textAlign="left";
 }
-function boxes(ctx,text,x,y,w,h,count,size=14){
- const s=String(text||"").slice(0,count),cw=w/count;ctx.font=size+"px Arial";ctx.fillStyle="#111";ctx.textAlign="center";ctx.textBaseline="middle";
- for(let i=0;i<s.length;i++)ctx.fillText(s[i],x+i*cw+cw/2,y+h/2+1);ctx.textAlign="left";
-}
-function tick(ctx,cx,cy){
- ctx.strokeStyle="#111";ctx.lineWidth=1.8;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(cx-7,cy);ctx.lineTo(cx-2,cy+5);ctx.lineTo(cx+9,cy-7);ctx.stroke();
+function boxes(ctx,text,x,y,w,h,count,size=14,weight=700){
+  const s=String(text||"").slice(0,count),cw=w/count;
+  ctx.font=weight+" "+size+"px Arial";
+  ctx.fillStyle="#111";
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  for(let i=0;i<s.length;i++)ctx.fillText(s[i],x+i*cw+cw/2,y+h/2+1);
+  ctx.textAlign="left";
 }
 function renderForm(){
- return new Promise((resolve,reject)=>{
-  const canvas=document.createElement("canvas");canvas.width=BASE_W;canvas.height=BASE_H;
-  const ctx=canvas.getContext("2d");const img=new Image();
-  img.onload=()=>{
-   ctx.drawImage(img,0,0,BASE_W,BASE_H);
+  return new Promise((resolve,reject)=>{
+    const canvas=document.createElement("canvas");
+    canvas.width=BASE_W;canvas.height=BASE_H;
+    const ctx=canvas.getContext("2d");
+    const img=new Image();
+    img.onload=()=>{
+      ctx.drawImage(img,0,0,BASE_W,BASE_H);
 
-   // Exact locations are based on the supplied Excel template rendered to the background image.
-   boxes(ctx,dateDigits(),991,146,228,22,8,13);
-   boxes(ctx,v("accountNumber"),650,231,569,23,20,13);
-   boxes(ctx,v("ifsc").toUpperCase(),907,261,312,22,11,13);
-   boxes(ctx,selectedDateDigits("startDate"),110,473,229,23,8,13);
-   boxes(ctx,selectedDateDigits("endDate"),110,503,229,23,8,13);
+      // IMPORTANT: these coordinates are unchanged from the previously working version.
+      // Only the font weight has been increased.
+      boxes(ctx,dateDigits(),991,146,228,22,8,13,700);
+      boxes(ctx,v("accountNumber"),650,231,569,23,20,13,700);
+      boxes(ctx,v("ifsc").toUpperCase(),907,261,312,22,11,13,700);
+      boxes(ctx,selectedDateDigits("startDate"),110,473,229,23,8,13,700);
+      boxes(ctx,selectedDateDigits("endDate"),110,503,229,23,8,13,700);
 
-   text(ctx,v("bankName").toUpperCase(),140,260,623,23, "center", 13);
-   text(ctx,amountWords(v("emi")),224,292,683,23,"center",13);
-   text(ctx,String(Math.round(Number(v("emi")))),935,292,284,23,"center",13);
-   text(ctx,"AGB LOAN A/C NO "+v("loanAccount").toUpperCase(),140,355,482,23,"center",12);
-   text(ctx,v("phone"),111,591,257,22,"center",13);
-   text(ctx,v("name").toUpperCase(),397,585,254,22,"center",11);
+      text(ctx,v("bankName").toUpperCase(),140,260,623,23,"center",13,700);
+      text(ctx,amountWords(v("emi")),224,292,683,23,"center",13,700);
+      text(ctx,String(Math.round(Number(v("emi")))),935,292,284,23,"center",13,700);
+      text(ctx,"AGB LOAN A/C NO "+v("loanAccount").toUpperCase(),140,355,482,23,"center",12,700);
+      text(ctx,v("phone"),111,591,257,22,"center",13,700);
+      text(ctx,v("name").toUpperCase(),397,585,254,22,"center",11,700);
 
+      finalCanvas=canvas;
+      const pc=document.createElement("canvas");
+      pc.width=CONTENT_CROP.w;pc.height=CONTENT_CROP.h;
+      pc.getContext("2d").drawImage(canvas,CONTENT_CROP.x,CONTENT_CROP.y,CONTENT_CROP.w,CONTENT_CROP.h,0,0,CONTENT_CROP.w,CONTENT_CROP.h);
+      printCanvas=pc;
 
-   finalCanvas=canvas;
-   document.getElementById("previewImage").src=canvas.toDataURL("image/png");
-   document.getElementById("preview").style.display="block";
-   resolve();
-  };
-  img.onerror=()=>reject(new Error("Template image could not be loaded."));
-  img.src="template.png";
- });
-}
-function colNum(s){let n=0;for(const c of s)n=n*26+c.charCodeAt(0)-64;return n;}
-function setChars(sheet,startCol,row,endCol,text){
- const a=colNum(startCol),b=colNum(endCol),s=String(text||"").slice(0,b-a+1);
- for(let c=a;c<=b;c++)sheet.cell(row,c).value(s[c-a]||"");
-}
-async function createFilledExcel(){
- const r=await fetch("NACH%20MANDATE.xlsx",{cache:"no-store"});
- if(!r.ok)throw new Error("NACH MANDATE.xlsx was not found. Keep it in the same folder as index.html.");
- const wb=await XlsxPopulate.fromDataAsync(await r.arrayBuffer()),sh=wb.sheet(0);
- setChars(sh,"AJ",4,"AQ",dateDigits());
- setChars(sh,"X",10,"AQ",v("accountNumber"));
- sh.cell("F12").value(v("bankName").toUpperCase());
- setChars(sh,"AI",12,"AQ",v("ifsc").toUpperCase());
- sh.cell("I14").value(amountWords(v("emi")));
- sh.cell("AI14").value(String(Math.round(Number(v("emi")))));
- sh.cell("F18").value("AGB LOAN A/C NO "+v("loanAccount").toUpperCase());
- setChars(sh,"E",24,"L",selectedDateDigits("startDate"));
- setChars(sh,"E",26,"L",selectedDateDigits("endDate"));
- sh.cell("E30").value(v("phone"));
- sh.cell("O31").value(v("name").toUpperCase());
- filledWorkbook=wb;
+      document.getElementById("previewImage").src=pc.toDataURL("image/png");
+      document.getElementById("preview").style.display="block";
+      resolve();
+    };
+    img.onerror=()=>reject(new Error("Template image could not be loaded. Keep template.png beside index.html."));
+    img.src="template.png";
+  });
 }
 async function generate(){
- document.getElementById("error").style.display="none";document.getElementById("success").style.display="none";
- const e=validate();if(e){show("error",e);return;}
- if(v("endDate") < v("startDate")){show("error","EMI End Date cannot be earlier than EMI Start From date.");return;}
-  try{await renderForm();await createFilledExcel();show("success","Form generated successfully. Review it before printing or downloading.");window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});}
- catch(err){console.error(err);show("error",err.message||"Could not generate the form.");}
+  document.getElementById("error").style.display="none";
+  document.getElementById("success").style.display="none";
+  updateEndDate();
+  const e=validate();if(e){show("error",e);return;}
+  try{
+    await renderForm();
+    show("success","Form generated successfully. Review it before printing or downloading.");
+    window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
+  }catch(err){
+    console.error(err);
+    show("error",err.message||"Could not generate the form.");
+  }
 }
 function pdfObject(){
- const {jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:"portrait",unit:"pt",format:"a4"});
- const pageW=pdf.internal.pageSize.getWidth();
- const pageH=pdf.internal.pageSize.getHeight();
- const marginLeft=18, marginRight=18, marginTop=18, marginBottom=18;
- const usableW=pageW-marginLeft-marginRight;
- const usableH=pageH-marginTop-marginBottom;
- const ratio=finalCanvas.height/finalCanvas.width;
- let drawW=usableW, drawH=drawW*ratio;
- if(drawH>usableH){drawH=usableH;drawW=drawH/ratio;}
- const x=marginLeft;
- const y=marginTop;
- pdf.addImage(finalCanvas.toDataURL("image/png"),"PNG",x,y,drawW,drawH);
- return pdf;
+  if(!printCanvas)throw new Error("Generate the form first.");
+  const {jsPDF}=window.jspdf;
+  const pdf=new jsPDF({orientation:"portrait",unit:"pt",format:"a4"});
+  const pageW=pdf.internal.pageSize.getWidth();
+  const pageH=pdf.internal.pageSize.getHeight();
+
+  // Equal page-edge margin on left/right and centered placement.
+  // The source form has a wider aspect ratio than A4, so it is fitted to width;
+  // the remaining vertical space is centered equally above and below.
+  const marginX=18;
+  const drawW=pageW-(marginX*2);
+  const drawH=drawW*(printCanvas.height/printCanvas.width);
+  const x=marginX;
+  const y=(pageH-drawH)/2;
+
+  pdf.addImage(printCanvas.toDataURL("image/png"),"PNG",x,y,drawW,drawH);
+  return pdf;
 }
-function downloadPDF(){if(!finalCanvas){show("error","Generate the form first.");return;}pdfObject().save("Filled_NACH_Mandate.pdf");}
-function printPDF(){if(!finalCanvas){show("error","Generate the form first.");return;}const pdf=pdfObject();pdf.autoPrint();const u=URL.createObjectURL(pdf.output("blob"));window.open(u,"_blank");}
-async function downloadExcel(){
- if(!filledWorkbook){show("error","Generate the form first.");return;}
- const blob=await filledWorkbook.outputAsync({type:"blob"}),u=URL.createObjectURL(blob),a=document.createElement("a");
- a.href=u;a.download="Filled_NACH_Mandate.xlsx";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);
+function downloadPDF(){
+  if(!printCanvas){show("error","Generate the form first.");return;}
+  pdfObject().save("Filled_NACH_Mandate.pdf");
+}
+function printPDF(){
+  if(!printCanvas){show("error","Generate the form first.");return;}
+  const pdf=pdfObject();pdf.autoPrint();
+  const u=URL.createObjectURL(pdf.output("blob"));
+  window.open(u,"_blank");
 }
 function resetForm(){
- ["accountNumber","bankName","ifsc","emi","loanAccount","startDate","endDate","phone","name"].forEach(id=>document.getElementById(id).value="");
- document.getElementById("date").value="";document.getElementById("preview").style.display="none";
- document.getElementById("error").style.display="none";document.getElementById("success").style.display="none";
- finalCanvas=null;filledWorkbook=null;
+  ["date","accountNumber","bankName","ifsc","emi","loanAccount","startDate","loanPeriod","phone","name"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("endDate").value="";
+  document.getElementById("endDate").dataset.iso="";
+  document.getElementById("preview").style.display="none";
+  document.getElementById("error").style.display="none";
+  document.getElementById("success").style.display="none";
+  finalCanvas=null;printCanvas=null;
 }
+document.getElementById("startDate").addEventListener("change",updateEndDate);
+document.getElementById("loanPeriod").addEventListener("input",updateEndDate);
 </script>
 </body>
 </html>
