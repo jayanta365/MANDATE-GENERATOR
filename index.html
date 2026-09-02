@@ -31,6 +31,9 @@ button{flex:1;border:0;border-radius:10px;padding:14px;font-size:15px;font-weigh
 @media(max-width:560px){body{padding:8px}.card{padding:15px}.grid{grid-template-columns:1fr}.buttons{flex-direction:column}}
 
 </style>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 </head>
 <body>
 <div class="container">
@@ -360,5 +363,16 @@ function resetForm(){
 document.getElementById("startDate").addEventListener("change",updateEndDate);
 document.getElementById("loanPeriod").addEventListener("input",updateEndDate);
 </script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(err => {
+      console.warn("Service worker registration failed:", err);
+    });
+  });
+}
+</script>
+
 </body>
 </html>
