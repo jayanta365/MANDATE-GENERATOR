@@ -226,7 +226,7 @@ function verticalCenterBaseline(ctx,y,h){
   const m=ctx.measureText("Ag");
   const ascent=m.actualBoundingBoxAscent||0;
   const descent=m.actualBoundingBoxDescent||0;
-  return y+(h+ascent-descent)/2;
+  return y+(h+ascent-descent)/2+1.5;
 }
 function text(ctx,text,x,y,w,h,align="center",size=14,weight=700){
   if(!text)return;
