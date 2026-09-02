@@ -25,12 +25,12 @@ button{flex:1;border:0;border-radius:10px;padding:14px;font-size:15px;font-weigh
 .error{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
 .success{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
 .preview{display:none;margin-top:24px;border-top:1px solid #e5e7eb;padding-top:18px}
-.preview img{width:100%;height:auto;display:block;border:1px solid #ddd;background:#fff}
+.preview img{width:calc(100% - 20px);height:auto;display:block;margin:0 auto;border:1px solid #ddd;background:#fff}
 .note{font-size:11px;color:#6b7280;margin-top:10px;line-height:1.5}
 .footer{text-align:center;color:#9ca3af;font-size:10px;margin-top:15px}
 @media(max-width:560px){body{padding:8px}.card{padding:15px}.grid{grid-template-columns:1fr}.buttons{flex-direction:column}}
 
-@media print{body{background:#fff;padding:0}.container{max-width:none}.header,.card>.title,.card>form,.buttons,.message,.footer,.note{display:none!important}.preview{display:block!important;border:0;margin:0;padding:0}.preview img{border:0;width:210mm;max-width:210mm;height:297mm;object-fit:contain;object-position:top left}}
+@media print{body{background:#fff;padding:0}.container{max-width:none}.header,.card>.title,.card>form,.buttons,.message,.footer,.note{display:none!important}.preview{display:block!important;border:0;margin:0;padding:0}.preview img{border:0;width:200mm;max-width:200mm;height:auto;margin:0 auto;object-fit:contain;object-position:top center}}
 </style>
 </head>
 <body>
@@ -101,7 +101,7 @@ button{flex:1;border:0;border-radius:10px;padding:14px;font-size:15px;font-weigh
 <button type="button" class="primary" onclick="downloadPDF()">Download PDF</button>
 <button type="button" class="secondary" onclick="printPDF()">Print / Save PDF</button>
 </div>
-<div class="note">The output is an A4 PDF fitted proportionally with a print-safe margin. The form is rendered in high definition with clear, slightly larger entered text. Only the top Mandate Form is filled; the rest of the template remains unchanged.</div>
+<div class="note">The output is an exact A4 PDF with a centered 5 mm side margin. All filled-data text is rendered in a heavier bold font for clearer printing. Only the top Mandate Form is filled; the rest of the template remains unchanged.</div>
 </div>
 <div class="footer">Mandate Form Generator • Data stays in your browser.</div>
 </div>
@@ -170,16 +170,13 @@ function validate(){
 function fit(ctx,text,max,start=14,min=6){
  let s=start;while(s>min){ctx.font=s+"px Arial";if(ctx.measureText(text).width<=max)return s;s-=.5}return min;
 }
-function text(ctx,text,x,y,w,h,align="center",size=14){
- if(!text)return;let s=fit(ctx,text,w-8,size,6);ctx.font=s+"px Arial";ctx.fillStyle="#111";ctx.textBaseline="middle";ctx.textAlign=align;
+function text(ctx,text,x,y,w,h,align="center",size=16){
+ if(!text)return;let s=fit(ctx,text,w-8,size,6);ctx.font="900 "+s+"px Arial, Helvetica, sans-serif";ctx.fillStyle="#111";ctx.textBaseline="middle";ctx.textAlign=align;
  const xx=align==="center"?x+w/2:align==="right"?x+w:x;ctx.fillText(text,xx,y+h/2);ctx.textAlign="left";
 }
-function boxes(ctx,text,x,y,w,h,count,size=14){
- const s=String(text||"").slice(0,count),cw=w/count;ctx.font="bold "+size+"px Arial";ctx.fillStyle="#111";ctx.textAlign="center";ctx.textBaseline="middle";
+function boxes(ctx,text,x,y,w,h,count,size=16){
+ const s=String(text||"").slice(0,count),cw=w/count;ctx.font="900 "+size+"px Arial, Helvetica, sans-serif";ctx.fillStyle="#111";ctx.textAlign="center";ctx.textBaseline="middle";
  for(let i=0;i<s.length;i++)ctx.fillText(s[i],x+i*cw+cw/2,y+h/2+1);ctx.textAlign="left";
-}
-function tick(ctx,cx,cy){
- ctx.strokeStyle="#111";ctx.lineWidth=1.8;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(cx-7,cy);ctx.lineTo(cx-2,cy+5);ctx.lineTo(cx+9,cy-7);ctx.stroke();
 }
 function renderForm(){
  return new Promise((resolve,reject)=>{
@@ -194,18 +191,18 @@ function renderForm(){
    ctx.scale(SCALE,SCALE);
 
    // Exact locations are based on the supplied Excel template rendered to the background image.
-   boxes(ctx,dateDigits(),991,146,228,22,8,16);
-   boxes(ctx,v("accountNumber"),650,231,569,23,20,16);
-   boxes(ctx,v("ifsc").toUpperCase(),907,261,312,22,11,16);
-   boxes(ctx,selectedDateDigits("startDate"),110,473,229,23,8,16);
-   boxes(ctx,selectedDateDigits("endDate"),110,503,229,23,8,16);
+   boxes(ctx,dateDigits(),991,146,228,22,8,15);
+   boxes(ctx,v("accountNumber"),650,231,569,23,20,15);
+   boxes(ctx,v("ifsc").toUpperCase(),907,261,312,22,11,15);
+   boxes(ctx,selectedDateDigits("startDate"),110,473,229,23,8,15);
+   boxes(ctx,selectedDateDigits("endDate"),110,503,229,23,8,15);
 
-   text(ctx,v("bankName").toUpperCase(),140,260,623,23, "center", 15);
-   text(ctx,amountWords(v("emi")),224,292,683,23,"center",15);
-   text(ctx,String(Math.round(Number(v("emi")))),935,292,284,23,"center",15);
-   text(ctx,"AGB LOAN A/C NO "+v("loanAccount").toUpperCase(),140,355,482,23,"center",14);
-   text(ctx,v("phone"),111,591,257,22,"center",15);
-   text(ctx,v("name").toUpperCase(),397,585,254,22,"center",14);
+   text(ctx,v("bankName").toUpperCase(),140,260,623,23, "center", 16);
+   text(ctx,amountWords(v("emi")),224,292,683,23,"center",17);
+   text(ctx,String(Math.round(Number(v("emi")))),935,292,284,23,"center",17);
+   text(ctx,"AGB LOAN A/C NO "+v("loanAccount").toUpperCase(),140,355,482,23,"center",16);
+   text(ctx,v("phone"),111,591,257,22,"center",16);
+   text(ctx,v("name").toUpperCase(),397,585,254,22,"center",16);
 
    ctx.restore();
    finalCanvas=canvas;
@@ -214,7 +211,7 @@ function renderForm(){
    resolve();
   };
   img.onerror=()=>reject(new Error("Template image could not be loaded."));
-  img.src="template-hd.png";
+  img.src="template-a4-300dpi.png";
  });
 }
 async function generate(){
@@ -226,23 +223,34 @@ async function generate(){
 }
 function pdfObject(){
  const {jsPDF}=window.jspdf;
- // A4 portrait: 210 x 297 mm / 595.28 x 841.89 pt.
- const pdf=new jsPDF({orientation:"portrait",unit:"pt",format:"a4",compress:false});
+ // Exact A4 portrait: 210 x 297 mm = 595.28 x 841.89 pt.
+ const pdf=new jsPDF({
+   orientation:"portrait",
+   unit:"pt",
+   format:"a4",
+   compress:false
+ });
  const pageW=pdf.internal.pageSize.getWidth();
  const pageH=pdf.internal.pageSize.getHeight();
- // Exact A4 page with a small, even print-safe margin. The HD canvas
- // is fitted proportionally so nothing is stretched or cropped.
- const margin=10;
- const usableW=pageW-(margin*2);
- const usableH=pageH-(margin*2);
- const ratio=BASE_H/BASE_W;
- let drawW=usableW;
- let drawH=drawW*ratio;
- if(drawH>usableH){drawH=usableH;drawW=drawH/ratio;}
+
+ // Keep a small, equal margin on both sides so the form is centered.
+ // The source remains a 2480 x 3508 lossless PNG; only the final placement is scaled.
+ const imgW=2480, imgH=3508;
+ const sideMargin=5*72/25.4; // 5 mm left and right
+ const maxW=pageW-(sideMargin*2);
+ const scale=Math.min(maxW/imgW,pageH/imgH);
+ const drawW=imgW*scale, drawH=imgH*scale;
  const x=(pageW-drawW)/2;
  const y=(pageH-drawH)/2;
- // NONE keeps the PNG data from being additionally JPEG-compressed.
- pdf.addImage(finalCanvas.toDataURL("image/png"),"PNG",x,y,drawW,drawH,undefined,"NONE");
+
+ // PNG is lossless. No JPEG conversion and no "FAST" image compression.
+ pdf.addImage(
+   finalCanvas.toDataURL("image/png"),
+   "PNG",
+   x,y,drawW,drawH,
+   undefined,
+   "NONE"
+ );
  return pdf;
 }
 function downloadPDF(){if(!finalCanvas){show("error","Generate the form first.");return;}pdfObject().save("Filled_NACH_Mandate.pdf");}
