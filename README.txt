@@ -1,39 +1,33 @@
-NACH MANDATE GENERATOR — EXCEL TEMPLATE VERSION
+NACH MANDATE GENERATOR — CORRECTED VERSION
 
-Upload all three files to the ROOT of the GitHub repository:
-1. index.html
-2. NACH MANDATE.xlsx
-3. template.png
+GitHub Pages files required:
+- index.html
+- template.png
 
-The Excel file is the actual supplied template. The app fills these exact Excel cells:
-- Date: AJ4:AQ4
-- Bank A/C: X10:AQ10 (one character per cell)
-- Bank Name: F12
-- IFSC: AI12:AQ12 (one character per cell)
-- Amount in words: I14
-- Amount in figures: AI14
-- Reference 1: F18
-- From: E24:L24 (one character per cell)
-- To: E26:L26 (one character per cell)
-- Phone: E30
-- Name: O31
+The Excel workbook is NOT required by the web application. The corrected Excel workbook is included separately only as a reference/source file.
 
-The PDF preview is based on a high-resolution rendering of the supplied Excel template, so the instructions and sample below the top form remain unchanged.
+CORRECTIONS IN THIS VERSION
+1. The template was reviewed against the supplied Excel workbook.
+2. CREATE / MODIFY / CANCEL radio markers are true circles, correctly proportioned and positioned.
+3. Sponsor bank code PUNB0RRBAGB and ASSAM GRAMIN BANK use a bolder Arial treatment to match the visual weight of generated input data.
+4. Existing generated-input coordinates were not changed.
+5. EMI End Date is calculated automatically from EMI Start From + Loan Period (months).
+6. The user enters EMI Start From and Loan Period only; EMI End Date is not manually entered.
+7. Filled Excel download has been removed from the web application.
+8. The generated PDF is A4 portrait with balanced page margins.
+9. The original instructions and sample section remain part of the template.
 
-GITHUB MOBILE:
-1. Create/open a repository.
-2. Add index.html.
-3. Add NACH MANDATE.xlsx.
-4. Add template.png.
-5. Enable GitHub Pages: Settings -> Pages -> Deploy from branch -> main -> / (root).
-6. Open the published URL.
+GITHUB DEPLOYMENT
+Upload/replace only:
+- index.html
+- template.png
 
-IMPORTANT:
-Keep the file name "NACH MANDATE.xlsx" exactly as shown and keep it beside index.html.
-Keep "template.png" beside index.html.
-The browser needs internet access for the XlsxPopulate and jsPDF libraries loaded from public CDNs.
+Do not rename either file.
 
-PRINTING:
-For alignment with a physical form, use 100% / Actual Size where possible. Do not use Fit to Page if exact alignment is required.
-
-Before official use, test several sample forms and compare the printed output with the Excel template.
+TESTING
+1. Select Date.
+2. Enter Bank A/C Number, Bank Name, IFSC, EMI amount, loan account, EMI Start From, Loan Period, phone and name.
+3. Confirm EMI End Date is calculated automatically.
+4. Generate the form.
+5. Check that generated values remain in their existing positions.
+6. Download the A4 PDF and print at 100% / Actual Size for final verification against the original bank form.
