@@ -292,9 +292,9 @@ function renderForm(){
       text(ctx,v("bankName").toUpperCase(),140,260,623,23,"center",15,700);
       text(ctx,amountWords(v("emi")),224,292,683,23,"center",15,700);
       text(ctx,String(Math.round(Number(v("emi")))),935,292,284,23,"center",15,700);
-      text(ctx,"AGB LOAN A/C NO "+v("loanAccount").toUpperCase(),140,355,482,23,"center",15,900);
+      text(ctx,"AGB LOAN A/C NO "+v("loanAccount").toUpperCase(),140,355,482,23,"center",15,700);
       text(ctx,v("phone"),111,591,257,22,"center",15,700);
-      text(ctx,v("name").toUpperCase(),397,585,254,22,"center",13,700);
+      text(ctx,v("name").toUpperCase(),397,585,254,22,"center",15,650);
 
       finalCanvas=canvas;
       const pc=document.createElement("canvas");
