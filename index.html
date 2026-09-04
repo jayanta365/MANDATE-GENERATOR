@@ -360,7 +360,9 @@ function pdfObject(){
 }
 function downloadPDF(){
   if(!printCanvas){show("error","Generate the form first.");return;}
-  pdfObject().save("Filled_NACH_Mandate.pdf");
+  const customerName=v("name") || "Filled_NACH_Mandate";
+  const safeName=customerName.replace(/[^a-zA-Z0-9 _-]/g, "").trim();
+  pdfObject().save((safeName || "Filled_NACH_Mandate") + "_NACH_Mandate.pdf");
 }
 function printPDF(){
   if(!printCanvas){show("error","Generate the form first.");return;}
