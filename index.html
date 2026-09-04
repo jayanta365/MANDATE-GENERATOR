@@ -192,7 +192,8 @@ function formatDisplayDate(raw){
 }
 function updateEndDate(){
   const start=v("startDate"), period=Number(v("loanPeriod"));
-  const end=addMonthsToDate(start,period);
+  // EMI End Date = EMI Start Date + Loan Period - 1 month
+  const end=addMonthsToDate(start,period-1);
   document.getElementById("endDate").value=formatDisplayDate(end);
   document.getElementById("endDate").dataset.iso=end||"";
 }
